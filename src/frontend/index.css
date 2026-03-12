@@ -1,0 +1,196 @@
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: url('/assets/fonts/BricolageGrotesque.woff2') format('woff2');
+  font-display: swap;
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/assets/fonts/GeistMono.woff2') format('woff2');
+  font-display: swap;
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/assets/fonts/GeneralSans.woff2') format('woff2');
+  font-display: swap;
+  font-weight: 100 900;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* BITTY BUILDER - Dark Arcade Theme */
+    /* Background: near-black with blue tint */
+    --background: 12 0.02 265;
+    --foreground: 97 0.01 265;
+
+    /* Cards: dark panels */
+    --card: 16 0.03 265;
+    --card-foreground: 97 0.01 265;
+
+    /* Popover */
+    --popover: 16 0.03 265;
+    --popover-foreground: 97 0.01 265;
+
+    /* Primary: lime green accent */
+    --primary: 90 0.28 140;
+    --primary-foreground: 10 0.01 265;
+
+    /* Secondary: magenta */
+    --secondary: 55 0.25 350;
+    --secondary-foreground: 97 0.01 265;
+
+    /* Muted */
+    --muted: 20 0.04 265;
+    --muted-foreground: 70 0.05 265;
+
+    /* Accent: orange */
+    --accent: 70 0.22 55;
+    --accent-foreground: 10 0.01 265;
+
+    /* Destructive */
+    --destructive: 55 0.25 350;
+    --destructive-foreground: 97 0.01 265;
+
+    /* Border/Input */
+    --border: 28 0.05 265;
+    --input: 28 0.05 265;
+    --ring: 90 0.28 140;
+
+    /* Radius */
+    --radius: 4px;
+
+    /* Chart - brand colors */
+    --chart-1: 90 0.28 140;
+    --chart-2: 55 0.25 350;
+    --chart-3: 70 0.22 55;
+    --chart-4: 75 0.2 225;
+    --chart-5: 60 0.28 290;
+
+    /* Sidebar */
+    --sidebar: 16 0.03 265;
+    --sidebar-foreground: 97 0.01 265;
+    --sidebar-primary: 90 0.28 140;
+    --sidebar-primary-foreground: 10 0.01 265;
+    --sidebar-accent: 28 0.05 265;
+    --sidebar-accent-foreground: 97 0.01 265;
+    --sidebar-border: 28 0.05 265;
+    --sidebar-ring: 90 0.28 140;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'General Sans', 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay for retro CRT effect */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+}
+
+/* Pixel/Arcade font utility */
+.font-display {
+  font-family: 'Bricolage Grotesque', 'Arial Black', Impact, sans-serif;
+}
+
+.font-mono-game {
+  font-family: 'Geist Mono', 'Courier New', monospace;
+}
+
+/* Game title gradient text */
+.title-gradient {
+  background: linear-gradient(135deg, #AAFF00 0%, #00DDFF 50%, #FF00AA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  paint-order: stroke fill;
+}
+
+/* Glowing border */
+.glow-green {
+  box-shadow: 0 0 20px rgba(170, 255, 0, 0.3), 0 0 40px rgba(170, 255, 0, 0.1);
+}
+
+.glow-magenta {
+  box-shadow: 0 0 20px rgba(255, 0, 170, 0.3), 0 0 40px rgba(255, 0, 170, 0.1);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 221, 255, 0.3), 0 0 40px rgba(0, 221, 255, 0.1);
+}
+
+/* Pixel border effect */
+.pixel-border {
+  border: 2px solid;
+  border-image: linear-gradient(135deg, #AAFF00, #00DDFF, #FF00AA) 1;
+}
+
+/* Retro button style */
+.btn-arcade {
+  font-family: 'Bricolage Grotesque', 'Arial Black', sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-arcade:active {
+  transform: scale(0.95);
+}
+
+/* Noise texture overlay */
+.noise-overlay {
+  position: relative;
+}
+
+.noise-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: oklch(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--border));
+  border-radius: 2px;
+}
