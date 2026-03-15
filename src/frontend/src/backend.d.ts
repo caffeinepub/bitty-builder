@@ -29,6 +29,7 @@ export enum UserRole {
 }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    changeNickname(newNickname: string): Promise<void>;
     getAllScores(): Promise<Array<ScoreEntry>>;
     getAllTimeLeaderboard(): Promise<Array<LeaderboardEntry>>;
     getCallerUserProfile(): Promise<UserProfile | null>;

@@ -123,6 +123,7 @@ export interface backendInterface {
     getWeeklyLeaderboard(): Promise<Array<LeaderboardEntry>>;
     isCallerAdmin(): Promise<boolean>;
     isNicknameAvailable(nickname: string): Promise<boolean>;
+    changeNickname(newNickname: string): Promise<void>;
     registerNickname(nickname: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     submitScore(score: bigint): Promise<void>;
@@ -323,6 +324,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.registerNickname(arg0);
+            return result;
+        }
+    }
+    async changeNickname(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.changeNickname(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.changeNickname(arg0);
             return result;
         }
     }

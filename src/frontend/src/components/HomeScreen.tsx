@@ -1,16 +1,80 @@
 import { Button } from "@/components/ui/button";
-import { motion } from "motion/react";
+import { Input } from "@/components/ui/input";
+import { Music, Volume2, VolumeX } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import {
+  useChangeNickname,
+  useCheckNickname,
+  useMyBestScore,
+  useMyNickname,
+} from "../hooks/useQueries";
 
 interface Props {
   onPlay: () => void;
   onLeaderboard: () => void;
+  isMuted: boolean;
+  onToggleMute: () => void;
 }
 
-export default function HomeScreen({ onPlay, onLeaderboard }: Props) {
+export default function HomeScreen({
+  onPlay,
+  onLeaderboard,
+  isMuted,
+  onToggleMute,
+}: Props) {
   const { identity, login, clear, isLoggingIn, isInitializing } =
     useInternetIdentity();
   const isAuthenticated = !!identity;
+  const principal = identity?.getPrincipal();
+
+  const { data: myNickname } = useMyNickname();
+  const { data: myBest } = useMyBestScore(principal);
+  const [showChangeName, setShowChangeName] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  const { data: nameAvailable, isFetching: checkingName } = useCheckNickname(
+    newName.trim().length >= 2 ? newName : "",
+  );
+  const changeMutation = useChangeNickname();
+
+  const handleChangeName = async () => {
+    if (!newName.trim() || newName.trim().length < 2) {
+      toast.error("Name must be at least 2 characters");
+      return;
+    }
+    if (nameAvailable === false) {
+      toast.error("That name is already taken");
+      return;
+    }
+    try {
+      await changeMutation.mutateAsync(newName.trim());
+      toast.success("Name updated!");
+      setShowChangeName(false);
+      setNewName("");
+    } catch (_e) {
+      toast.error("Failed to change name");
+    }
+  };
+
+  const nameStatus = () => {
+    if (newName.trim().length < 2) return null;
+    if (checkingName) return "checking";
+    if (nameAvailable === true) return "available";
+    if (nameAvailable === false) return "taken";
+    return null;
+  };
+  const ns = nameStatus();
+
+  const hotPinkButtonStyle = {
+    background: "#000",
+    border: "2px solid #FF1493",
+    color: "#FF1493",
+    fontWeight: 700,
+    boxShadow: "0 0 8px rgba(255,20,147,0.4)",
+  };
 
   return (
     <div
@@ -20,32 +84,83 @@ export default function HomeScreen({ onPlay, onLeaderboard }: Props) {
           "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(170,255,0,0.08) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 80% 100%, rgba(255,0,170,0.07) 0%, transparent 50%), #06060f",
       }}
     >
-      {/* Auth corner */}
-      <div className="w-full flex justify-end">
-        {isInitializing ? null : isAuthenticated ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={clear}
-            className="font-mono text-xs border-border/50 text-muted-foreground hover:text-foreground"
-            data-ocid="auth.logout_button"
+      {/* Top bar: personal best left, controls right */}
+      <div className="w-full flex justify-between items-center">
+        {/* Personal best - top left */}
+        {isAuthenticated && myBest != null ? (
+          <div
+            data-ocid="home.personal_best"
+            className="flex flex-col items-center px-3 py-1.5 rounded-sm"
+            style={{
+              background: "rgba(0,0,0,0.6)",
+              border: "2px solid rgba(170,255,0,0.5)",
+              boxShadow: "0 0 12px rgba(170,255,0,0.3)",
+            }}
           >
-            Sign Out
-          </Button>
+            <span
+              className="text-[9px] font-mono font-black tracking-widest uppercase"
+              style={{ color: "rgba(170,255,0,0.7)" }}
+            >
+              BEST
+            </span>
+            <span
+              className="font-mono font-black text-sm leading-none"
+              style={{
+                color: "#AAFF00",
+                textShadow: "0 0 8px rgba(170,255,0,0.7)",
+              }}
+            >
+              {myBest.toLocaleString()}
+            </span>
+          </div>
         ) : (
+          <div />
+        )}
+
+        {/* Right side: mute + auth */}
+        <div className="flex items-center gap-2">
+          {/* Music mute button */}
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={login}
-            disabled={isLoggingIn}
-            className="font-mono text-xs border-[#AAFF00]/40 text-[#AAFF00] hover:bg-[#AAFF00]/10"
-            data-ocid="auth.login_button"
+            onClick={onToggleMute}
+            data-ocid="music.toggle"
+            style={hotPinkButtonStyle}
+            className="font-mono text-xs p-2"
+            title={isMuted ? "Unmute music" : "Mute music"}
           >
-            {isLoggingIn ? "Signing in..." : "Sign In"}
+            {isMuted ? <VolumeX size={16} /> : <Music size={16} />}
           </Button>
-        )}
+
+          {/* Auth button */}
+          {isInitializing ? null : isAuthenticated ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={clear}
+              data-ocid="auth.logout_button"
+              style={hotPinkButtonStyle}
+              className="font-mono text-xs"
+            >
+              Sign Out
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={login}
+              disabled={isLoggingIn}
+              data-ocid="auth.login_button"
+              style={hotPinkButtonStyle}
+              className="font-mono text-xs"
+            >
+              {isLoggingIn ? "Signing in..." : "Sign In"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Main content */}
@@ -161,7 +276,7 @@ export default function HomeScreen({ onPlay, onLeaderboard }: Props) {
           </button>
         </motion.div>
 
-        {/* Login nudge */}
+        {/* Auth / nickname status */}
         {!isAuthenticated && (
           <motion.p
             initial={{ opacity: 0 }}
@@ -172,15 +287,134 @@ export default function HomeScreen({ onPlay, onLeaderboard }: Props) {
             Sign in to save your high score!
           </motion.p>
         )}
+
         {isAuthenticated && (
-          <motion.p
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center text-xs font-mono"
-            style={{ color: "#AAFF00" }}
+            className="w-full flex flex-col items-center gap-2"
           >
-            ✓ Signed in — scores can be saved!
-          </motion.p>
+            {myNickname ? (
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-xs font-mono"
+                  style={{ color: "#AAFF00" }}
+                >
+                  ✓ Playing as @{myNickname}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewName(myNickname);
+                    setShowChangeName(!showChangeName);
+                  }}
+                  data-ocid="nickname.edit_button"
+                  className="text-xs font-mono underline"
+                  style={{ color: "#00DDFF" }}
+                >
+                  Change name
+                </button>
+              </div>
+            ) : (
+              <p
+                className="text-center text-xs font-mono"
+                style={{ color: "#AAFF00" }}
+              >
+                ✓ Signed in — claim a nickname when you submit a score!
+              </p>
+            )}
+
+            <AnimatePresence>
+              {showChangeName && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="w-full overflow-hidden"
+                >
+                  <div
+                    className="flex flex-col gap-2 p-3 rounded-sm mt-1"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(0,221,255,0.3)",
+                    }}
+                  >
+                    <p className="text-xs font-mono text-muted-foreground">
+                      Your score will carry over to the new name.
+                    </p>
+                    <div className="relative">
+                      <Input
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        placeholder="New nickname"
+                        maxLength={20}
+                        data-ocid="nickname.input"
+                        className="font-mono bg-transparent border-border/50 focus:border-[#00DDFF]/50"
+                      />
+                      {ns && (
+                        <span
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-mono"
+                          style={{
+                            color:
+                              ns === "available"
+                                ? "#AAFF00"
+                                : ns === "taken"
+                                  ? "#FF00AA"
+                                  : "#888",
+                          }}
+                        >
+                          {ns === "checking"
+                            ? "..."
+                            : ns === "available"
+                              ? "✓"
+                              : "✗"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleChangeName}
+                        disabled={
+                          changeMutation.isPending ||
+                          ns === "taken" ||
+                          !newName.trim()
+                        }
+                        data-ocid="nickname.save_button"
+                        className="flex-1 py-2 text-xs font-display font-black rounded-sm"
+                        style={{
+                          background:
+                            changeMutation.isPending ||
+                            ns === "taken" ||
+                            !newName.trim()
+                              ? "rgba(255,255,255,0.1)"
+                              : "linear-gradient(135deg, #00DDFF, #AAFF00)",
+                          color: "#06060f",
+                        }}
+                      >
+                        {changeMutation.isPending ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowChangeName(false);
+                          setNewName("");
+                        }}
+                        data-ocid="nickname.cancel_button"
+                        className="flex-1 py-2 text-xs font-mono rounded-sm"
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          color: "#666",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
 

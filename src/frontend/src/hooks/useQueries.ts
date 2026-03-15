@@ -1,3 +1,4 @@
+import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useActor } from "./useActor";
 
@@ -67,6 +68,21 @@ export function useRegisterNickname() {
   });
 }
 
+export function useChangeNickname() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (newNickname: string) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.changeNickname(newNickname.trim());
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["nickname"] });
+      void queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+    },
+  });
+}
+
 export function useSubmitScore() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
@@ -78,5 +94,20 @@ export function useSubmitScore() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     },
+  });
+}
+
+export function useMyBestScore(principal: Principal | undefined) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["score", "mybest", principal?.toText()],
+    queryFn: async () => {
+      if (!actor || !principal) return null;
+      const scores = await actor.getTopScoresForUser(principal);
+      if (!scores || scores.length === 0) return null;
+      return Math.max(...scores.map((s) => Number(s.score)));
+    },
+    enabled: !!actor && !isFetching && !!principal,
+    staleTime: 60_000,
   });
 }

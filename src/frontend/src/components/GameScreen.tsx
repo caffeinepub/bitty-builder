@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsDown,
+  Music,
   Pause,
   Play,
   RotateCcw,
@@ -18,6 +19,8 @@ import GameOverModal from "./GameOverModal";
 interface Props {
   onQuit: () => void;
   onLeaderboard: () => void;
+  isMuted: boolean;
+  onToggleMute: () => void;
 }
 
 const CELL_SIZE_DESKTOP = 28;
@@ -27,7 +30,12 @@ function isMobile() {
   return window.innerWidth < 640;
 }
 
-export default function GameScreen({ onQuit, onLeaderboard }: Props) {
+export default function GameScreen({
+  onQuit,
+  onLeaderboard,
+  isMuted,
+  onToggleMute,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement>(null);
   const holdCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -285,13 +293,32 @@ export default function GameScreen({ onQuit, onLeaderboard }: Props) {
         </div>
 
         <div className="flex items-center gap-1">
+          {/* SFX toggle */}
           <button
             type="button"
             onClick={() => setSoundEnabled((v) => !v)}
             className="p-2 rounded transition-colors"
+            title={soundEnabled ? "Mute SFX" : "Unmute SFX"}
             style={{ color: soundEnabled ? "#AAFF00" : "#555" }}
           >
-            {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+            {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
+          {/* Music mute toggle */}
+          <button
+            type="button"
+            onClick={onToggleMute}
+            data-ocid="music.toggle"
+            className="p-2 rounded transition-colors"
+            title={isMuted ? "Unmute music" : "Mute music"}
+            style={{
+              background: "#000",
+              border: "2px solid #FF1493",
+              color: isMuted ? "#555" : "#FF1493",
+              boxShadow: isMuted ? "none" : "0 0 6px rgba(255,20,147,0.4)",
+              borderRadius: "4px",
+            }}
+          >
+            {isMuted ? <VolumeX size={16} /> : <Music size={16} />}
           </button>
           <button
             type="button"
@@ -432,7 +459,7 @@ export default function GameScreen({ onQuit, onLeaderboard }: Props) {
       </div>
 
       {/* Touch controls */}
-      <div className="mt-4 flex flex-col items-center gap-3 w-full max-w-xs px-3">
+      <div className="mt-2 flex flex-col items-center gap-2 w-full max-w-xs px-3">
         {/* Row 1: Hold | Rotate | Hard Drop */}
         <div className="flex gap-2 w-full justify-center">
           <TouchBtn
@@ -443,6 +470,7 @@ export default function GameScreen({ onQuit, onLeaderboard }: Props) {
             borderColor="#AA00FF"
             textColor="#CC55FF"
             glowColor="rgba(170,0,255,0.4)"
+            py="py-[14px]"
           >
             <span className="text-sm font-mono font-black">HOLD</span>
           </TouchBtn>
@@ -454,8 +482,9 @@ export default function GameScreen({ onQuit, onLeaderboard }: Props) {
             borderColor="#AAFF00"
             textColor="#AAFF00"
             glowColor="rgba(170,255,0,0.5)"
+            py="py-[14px]"
           >
-            <RotateCcw size={24} />
+            <RotateCcw size={22} />
           </TouchBtn>
           <TouchBtn
             onPress={() => gameRef.current?.hardDrop()}
@@ -465,8 +494,9 @@ export default function GameScreen({ onQuit, onLeaderboard }: Props) {
             borderColor="#FF00AA"
             textColor="#FF00AA"
             glowColor="rgba(255,0,170,0.5)"
+            py="py-[14px]"
           >
-            <ChevronsDown size={24} />
+            <ChevronsDown size={22} />
           </TouchBtn>
         </div>
         {/* Row 2: Left | Down | Right */}
@@ -479,8 +509,9 @@ export default function GameScreen({ onQuit, onLeaderboard }: Props) {
             borderColor="#00DDFF"
             textColor="#00DDFF"
             glowColor="rgba(0,221,255,0.5)"
+            py="py-[14px]"
           >
-            <ChevronLeft size={28} strokeWidth={3} />
+            <ChevronLeft size={25} strokeWidth={3} />
           </TouchBtn>
           <TouchBtn
             onPress={() => gameRef.current?.softDrop()}
@@ -490,8 +521,9 @@ export default function GameScreen({ onQuit, onLeaderboard }: Props) {
             borderColor="#00DDFF"
             textColor="#00DDFF"
             glowColor="rgba(0,221,255,0.4)"
+            py="py-[14px]"
           >
-            <ChevronDown size={28} strokeWidth={3} />
+            <ChevronDown size={25} strokeWidth={3} />
           </TouchBtn>
           <TouchBtn
             onPress={() => gameRef.current?.moveRight()}
@@ -501,8 +533,9 @@ export default function GameScreen({ onQuit, onLeaderboard }: Props) {
             borderColor="#00DDFF"
             textColor="#00DDFF"
             glowColor="rgba(0,221,255,0.5)"
+            py="py-[14px]"
           >
-            <ChevronRight size={28} strokeWidth={3} />
+            <ChevronRight size={25} strokeWidth={3} />
           </TouchBtn>
         </div>
       </div>
@@ -529,6 +562,7 @@ interface TouchBtnProps {
   borderColor?: string;
   textColor?: string;
   glowColor?: string;
+  py?: string;
 }
 
 function TouchBtn({
@@ -539,6 +573,7 @@ function TouchBtn({
   borderColor = "rgba(255,255,255,0.3)",
   textColor = "#fff",
   glowColor = "rgba(255,255,255,0.2)",
+  py = "py-[14px]",
 }: TouchBtnProps) {
   return (
     <button
@@ -548,7 +583,7 @@ function TouchBtn({
         onPress();
       }}
       onClick={onPress}
-      className={`flex items-center justify-center py-4 rounded-md border-2 bg-transparent active:scale-95 transition-transform ${className}`}
+      className={`flex items-center justify-center ${py} rounded-md border-2 bg-transparent active:scale-95 transition-transform ${className}`}
       style={{
         background: bgColor,
         borderColor: borderColor,

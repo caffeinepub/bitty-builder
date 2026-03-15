@@ -1,13 +1,62 @@
 import { Toaster } from "@/components/ui/sonner";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import GameScreen from "./components/GameScreen";
 import HomeScreen from "./components/HomeScreen";
 import LeaderboardScreen from "./components/LeaderboardScreen";
+import { MusicEngine } from "./game/music";
 
 export type Screen = "home" | "game" | "leaderboard";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
+  const musicRef = useRef<MusicEngine | null>(null);
+  const [isMuted, setIsMuted] = useState(() => {
+    try {
+      return localStorage.getItem("bitty_muted") === "true";
+    } catch (_e) {
+      return false;
+    }
+  });
+
+  // Lazily initialize and get music engine
+  const getMusic = useCallback((): MusicEngine => {
+    if (!musicRef.current) {
+      musicRef.current = new MusicEngine();
+    }
+    return musicRef.current;
+  }, []);
+
+  // Trigger music on first user interaction (autoplay policy)
+  useEffect(() => {
+    const handler = () => {
+      getMusic().triggerStart();
+    };
+    window.addEventListener("pointerdown", handler, { once: true });
+    window.addEventListener("keydown", handler, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", handler);
+      window.removeEventListener("keydown", handler);
+    };
+  }, [getMusic]);
+
+  // React to screen changes for music
+  useEffect(() => {
+    const music = getMusic();
+    if (screen === "home") {
+      music.play("menu");
+    } else if (screen === "game") {
+      music.play("game");
+    } else {
+      music.stop();
+    }
+  }, [screen, getMusic]);
+
+  const handleToggleMute = useCallback(() => {
+    const music = getMusic();
+    const next = !isMuted;
+    setIsMuted(next);
+    music.setMuted(next);
+  }, [isMuted, getMusic]);
 
   return (
     <div className="min-h-screen bg-background text-foreground noise-overlay">
@@ -15,12 +64,16 @@ export default function App() {
         <HomeScreen
           onPlay={() => setScreen("game")}
           onLeaderboard={() => setScreen("leaderboard")}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
         />
       )}
       {screen === "game" && (
         <GameScreen
           onQuit={() => setScreen("home")}
           onLeaderboard={() => setScreen("leaderboard")}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
         />
       )}
       {screen === "leaderboard" && (

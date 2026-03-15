@@ -60,9 +60,12 @@ actor {
   let nicknameMap = Map.empty<Principal, Text>();
   let reverseNicknameMap = Map.empty<Text, Principal>();
 
-  // Score storage
+  // Legacy stable variables retained for upgrade compatibility (not used for new logic)
   let scoreEntries = Map.empty<Nat, ScoreEntry>();
   var nextScoreId = 0;
+
+  // Score storage - one entry per player (keyed by Principal)
+  let playerScores = Map.empty<Principal, ScoreEntry>();
 
   module ScoreEntry {
     public func compare(entry1 : ScoreEntry, entry2 : ScoreEntry) : Order.Order {
@@ -95,17 +98,63 @@ actor {
     reverseNicknameMap.add(nickname, caller);
   };
 
+  // Change Nickname - carries over existing score
+  public shared ({ caller }) func changeNickname(newNickname : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can change nicknames");
+    };
+
+    // New nickname must not be taken by someone else
+    switch (reverseNicknameMap.get(newNickname)) {
+      case (null) {};
+      case (?owner) {
+        if (owner != caller) {
+          Runtime.trap("Nickname already taken");
+        };
+        // Already using this nickname, no-op
+        return;
+      };
+    };
+
+    // Remove old nickname from reverse map
+    switch (nicknameMap.get(caller)) {
+      case (null) {};
+      case (?oldNickname) {
+        reverseNicknameMap.remove(oldNickname);
+      };
+    };
+
+    // Register new nickname
+    nicknameMap.add(caller, newNickname);
+    reverseNicknameMap.add(newNickname, caller);
+
+    // Update nickname on existing score entry
+    switch (playerScores.get(caller)) {
+      case (null) {};
+      case (?existing) {
+        let updated : ScoreEntry = {
+          principal = existing.principal;
+          nickname = newNickname;
+          score = existing.score;
+          timestamp = existing.timestamp;
+        };
+        playerScores.add(caller, updated);
+      };
+    };
+  };
+
   public query ({ caller }) func getMyNickname() : async ?Text {
-    // No authorization check - anyone including guests can check their own nickname
     nicknameMap.get(caller);
   };
 
   public query ({ caller }) func isNicknameAvailable(nickname : Text) : async Bool {
-    // No authorization check - public function for anyone to check availability
-    not reverseNicknameMap.containsKey(nickname);
+    switch (reverseNicknameMap.get(nickname)) {
+      case (null) { true };
+      case (?owner) { owner == caller };
+    };
   };
 
-  // Score Submission
+  // Score Submission - one entry per player, only replaces if new score is higher
   public shared ({ caller }) func submitScore(score : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can submit scores");
@@ -116,31 +165,14 @@ actor {
       case (?name) { name };
     };
 
-    // Only store top 2 scores per user
-    var userScoreCount = 0;
-    for (entry in scoreEntries.values()) {
-      if (entry.principal == caller) {
-        userScoreCount += 1;
-      };
-    };
-
-    if (userScoreCount >= 2) {
-      // Find the lowest score and replace if new score is higher
-      var lowestScoreIndex = -1;
-      var lowestScore = score;
-
-      var index = 0;
-      for (entry in scoreEntries.values()) {
-        if (entry.principal == caller and entry.score < lowestScore) {
-          lowestScore := entry.score;
-          lowestScoreIndex := index;
+    // Check existing score - only update if new score is higher
+    switch (playerScores.get(caller)) {
+      case (?existing) {
+        if (score <= existing.score) {
+          return;
         };
-        index += 1;
       };
-
-      if (lowestScoreIndex < 0) {
-        Runtime.trap("Already have top 2 scores");
-      };
+      case (null) {};
     };
 
     let entry : ScoreEntry = {
@@ -150,55 +182,42 @@ actor {
       timestamp = Time.now();
     };
 
-    scoreEntries.add(nextScoreId, entry);
-    nextScoreId += 1;
+    playerScores.add(caller, entry);
   };
 
   public query ({ caller }) func getWeeklyLeaderboard() : async [LeaderboardEntry] {
-    // No authorization check - public leaderboard accessible to all including guests
     let currentTime = Time.now();
     let weekStart = getCurrentWeekStart(currentTime);
 
-    // Filter scores from the current week
-    let filteredScores = scoreEntries.values().filter(
+    let filteredScores = playerScores.values().filter(
       func(entry) {
         entry.timestamp >= weekStart;
       }
     );
 
-    let sortedScores = filteredScores.sort();
-
-    buildLeaderboard(sortedScores);
+    buildLeaderboard(filteredScores);
   };
 
   public query ({ caller }) func getAllTimeLeaderboard() : async [LeaderboardEntry] {
-    // No authorization check - public leaderboard accessible to all including guests
-    let allScores = scoreEntries.values();
-
-    let sortedScores = allScores.sort();
-
-    buildLeaderboard(sortedScores);
+    let allScores = playerScores.values();
+    buildLeaderboard(allScores);
   };
 
   // Helper Functions
   func getCurrentWeekStart(timestamp : Int) : Int {
-    let secondsPerWeek = 604800; // 7 days
+    let secondsPerWeek = 604800;
     let nanosecondsPerSecond = 1_000_000_000;
-
     let secondsPerWeekNs = secondsPerWeek * nanosecondsPerSecond;
-
     let weeksElapsed = timestamp / secondsPerWeekNs;
     weeksElapsed * secondsPerWeekNs;
   };
 
   func buildLeaderboard(scores : Iter.Iter<ScoreEntry>) : [LeaderboardEntry] {
     let sortedScores = scores.sort();
-
     let arrayOfScores = sortedScores.toArray();
-
     let topEntries = arrayOfScores.sliceToArray(0, Int.abs(Nat.min(10, arrayOfScores.size())));
 
-    let leaderboard = Array.tabulate(
+    Array.tabulate(
       topEntries.size(),
       func(i) {
         let entry = topEntries[i];
@@ -210,8 +229,6 @@ actor {
         };
       },
     );
-
-    leaderboard;
   };
 
   // Admin-only debug functions
@@ -219,14 +236,14 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can view all scores");
     };
-    scoreEntries.values().toArray();
+    playerScores.values().toArray();
   };
 
   public query ({ caller }) func getTopScores() : async [ScoreEntry] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can view top scores");
     };
-    let allScores = scoreEntries.values().toArray();
+    let allScores = playerScores.values().toArray();
     allScores.sliceToArray(0, 10);
   };
 
@@ -234,15 +251,9 @@ actor {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own scores");
     };
-
-    let userScores = scoreEntries.values().filter(
-      func(entry) {
-        entry.principal == user;
-      }
-    );
-
-    let sortedScores = userScores.sort();
-    let arrayOfScores = sortedScores.toArray();
-    arrayOfScores.sliceToArray(0, 2);
+    switch (playerScores.get(user)) {
+      case (null) { [] };
+      case (?entry) { [entry] };
+    };
   };
 };
