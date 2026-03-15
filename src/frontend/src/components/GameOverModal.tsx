@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCheckNickname,
@@ -26,6 +27,7 @@ export default function GameOverModal({
   onQuit,
 }: Props) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
+  const { isFetching: actorFetching } = useActor();
   const isAuthenticated = !!identity;
 
   const { data: existingNickname, isLoading: nicknameLoading } =
@@ -60,16 +62,16 @@ export default function GameOverModal({
         await submitMutation.mutateAsync(score);
         setScoreSaved(true);
         toast.success("Score saved!");
-      } catch (_e) {
-        toast.error("Failed to save score");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Failed to save score");
       }
     } else {
       try {
         await submitMutation.mutateAsync(score);
         setScoreSaved(true);
         toast.success("Score saved!");
-      } catch (_e) {
-        toast.error("Failed to save score");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Failed to save score");
       }
     }
   };
@@ -85,6 +87,12 @@ export default function GameOverModal({
   };
 
   const nickStatus = getNicknameStatus();
+
+  const handleShareOnX = () => {
+    const text = `I just scored ${score.toLocaleString()} on Bitty Builder! Can you beat me? @bittyicp #BittyBuilder #ICP GAMES @ BITTYONICP.COM`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <AnimatePresence>
@@ -168,7 +176,7 @@ export default function GameOverModal({
                     )}
                   </Button>
                 </div>
-              ) : nicknameLoading ? (
+              ) : nicknameLoading || actorFetching ? (
                 <div
                   className="flex justify-center"
                   data-ocid="score.loading_state"
@@ -213,13 +221,19 @@ export default function GameOverModal({
                     type="button"
                     onClick={handleSaveScore}
                     disabled={
-                      isSaving || nickStatus === "taken" || !nickname.trim()
+                      isSaving ||
+                      nickStatus === "taken" ||
+                      !nickname.trim() ||
+                      actorFetching
                     }
                     data-ocid="nickname.submit_button"
                     className="w-full font-display font-black"
                     style={{
                       background:
-                        isSaving || nickStatus === "taken" || !nickname.trim()
+                        isSaving ||
+                        nickStatus === "taken" ||
+                        !nickname.trim() ||
+                        actorFetching
                           ? undefined
                           : "linear-gradient(135deg, #AAFF00, #00DDFF)",
                       color: "#06060f",
@@ -247,13 +261,14 @@ export default function GameOverModal({
                   <Button
                     type="button"
                     onClick={handleSaveScore}
-                    disabled={isSaving}
+                    disabled={isSaving || actorFetching}
                     data-ocid="score.save_button"
                     className="w-full font-display font-black"
                     style={{
-                      background: isSaving
-                        ? undefined
-                        : "linear-gradient(135deg, #AAFF00, #00DDFF)",
+                      background:
+                        isSaving || actorFetching
+                          ? undefined
+                          : "linear-gradient(135deg, #AAFF00, #00DDFF)",
                       color: "#06060f",
                     }}
                   >
@@ -290,6 +305,7 @@ export default function GameOverModal({
             <button
               type="button"
               onClick={onPlayAgain}
+              data-ocid="game.primary_button"
               className="btn-arcade w-full py-3 font-display font-black text-sm rounded-sm"
               style={{
                 background: "linear-gradient(135deg, #00DDFF, #8B00FF)",
@@ -298,6 +314,22 @@ export default function GameOverModal({
             >
               ▶ PLAY AGAIN
             </button>
+
+            {/* Share on X */}
+            <button
+              type="button"
+              onClick={handleShareOnX}
+              data-ocid="score.share_button"
+              className="btn-arcade w-full py-2 font-display font-black text-sm rounded-sm"
+              style={{
+                background: "#000",
+                border: "2px solid #fff",
+                color: "#fff",
+              }}
+            >
+              𝕏 Share Score
+            </button>
+
             <div className="flex gap-2">
               <button
                 type="button"

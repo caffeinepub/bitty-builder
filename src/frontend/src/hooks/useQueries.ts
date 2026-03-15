@@ -1,6 +1,8 @@
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { backendInterface } from "../backend";
 import { useActor } from "./useActor";
+import { useInternetIdentity } from "./useInternetIdentity";
 
 export function useAllTimeLeaderboard() {
   const { actor, isFetching } = useActor();
@@ -55,10 +57,14 @@ export function useCheckNickname(nickname: string) {
 }
 
 export function useRegisterNickname() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (nickname: string) => {
+      const actor = queryClient.getQueryData<backendInterface>([
+        "actor",
+        identity?.getPrincipal().toString(),
+      ]);
       if (!actor) throw new Error("Not connected");
       await actor.registerNickname(nickname.trim());
     },
@@ -69,10 +75,14 @@ export function useRegisterNickname() {
 }
 
 export function useChangeNickname() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (newNickname: string) => {
+      const actor = queryClient.getQueryData<backendInterface>([
+        "actor",
+        identity?.getPrincipal().toString(),
+      ]);
       if (!actor) throw new Error("Not connected");
       await actor.changeNickname(newNickname.trim());
     },
@@ -84,10 +94,14 @@ export function useChangeNickname() {
 }
 
 export function useSubmitScore() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (score: number) => {
+      const actor = queryClient.getQueryData<backendInterface>([
+        "actor",
+        identity?.getPrincipal().toString(),
+      ]);
       if (!actor) throw new Error("Not connected");
       await actor.submitScore(BigInt(score));
     },

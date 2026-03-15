@@ -26,7 +26,7 @@ export default function App() {
     return musicRef.current;
   }, []);
 
-  // Trigger music on first user interaction (autoplay policy)
+  // Start music on first user interaction (autoplay policy)
   useEffect(() => {
     const handler = () => {
       getMusic().triggerStart();
@@ -39,17 +39,10 @@ export default function App() {
     };
   }, [getMusic]);
 
-  // React to screen changes for music
+  // Queue music to start (will actually start on first user interaction)
   useEffect(() => {
-    const music = getMusic();
-    if (screen === "home") {
-      music.play("menu");
-    } else if (screen === "game") {
-      music.play("game");
-    } else {
-      music.stop();
-    }
-  }, [screen, getMusic]);
+    getMusic().play();
+  }, [getMusic]);
 
   const handleToggleMute = useCallback(() => {
     const music = getMusic();
