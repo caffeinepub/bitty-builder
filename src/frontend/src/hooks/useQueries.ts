@@ -1,8 +1,6 @@
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { backendInterface } from "../backend";
 import { useActor } from "./useActor";
-import { useInternetIdentity } from "./useInternetIdentity";
 
 export function useAllTimeLeaderboard() {
   const { actor, isFetching } = useActor();
@@ -57,15 +55,11 @@ export function useCheckNickname(nickname: string) {
 }
 
 export function useRegisterNickname() {
-  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (nickname: string) => {
-      const actor = queryClient.getQueryData<backendInterface>([
-        "actor",
-        identity?.getPrincipal().toString(),
-      ]);
-      if (!actor) throw new Error("Not connected");
+      if (!actor) throw new Error("Not signed in");
       await actor.registerNickname(nickname.trim());
     },
     onSuccess: () => {
@@ -75,15 +69,11 @@ export function useRegisterNickname() {
 }
 
 export function useChangeNickname() {
-  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (newNickname: string) => {
-      const actor = queryClient.getQueryData<backendInterface>([
-        "actor",
-        identity?.getPrincipal().toString(),
-      ]);
-      if (!actor) throw new Error("Not connected");
+      if (!actor) throw new Error("Not signed in");
       await actor.changeNickname(newNickname.trim());
     },
     onSuccess: () => {
@@ -94,15 +84,11 @@ export function useChangeNickname() {
 }
 
 export function useSubmitScore() {
-  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (score: number) => {
-      const actor = queryClient.getQueryData<backendInterface>([
-        "actor",
-        identity?.getPrincipal().toString(),
-      ]);
-      if (!actor) throw new Error("Not connected");
+      if (!actor) throw new Error("Not signed in");
       await actor.submitScore(BigInt(score));
     },
     onSuccess: () => {
