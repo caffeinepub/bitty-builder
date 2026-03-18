@@ -1,5 +1,6 @@
 // MusicEngine: Web Audio API synthesized electronic music, no external files
 // 5 tracks that rotate randomly every 60 seconds
+// 3 upbeat (EDM/synthwave) + 2 aggressive (industrial/dark) -- futuristic arcade style
 
 export type MusicTrack = "menu" | "game";
 
@@ -113,19 +114,19 @@ export class MusicEngine {
   private _playTrack(ctx: AudioContext, index: TrackIndex): void {
     switch (index) {
       case 0:
-        this._playTrack0_BrightChiptune(ctx);
+        this._playTrack0_UpbeatEDM(ctx);
         break;
       case 1:
-        this._playTrack1_DrivingBass(ctx);
+        this._playTrack1_SynthwaveGroove(ctx);
         break;
       case 2:
-        this._playTrack2_AmbientSynth(ctx);
+        this._playTrack2_FuturisticBounce(ctx);
         break;
       case 3:
-        this._playTrack3_Aggressive(ctx);
+        this._playTrack3_IndustrialHard(ctx);
         break;
       case 4:
-        this._playTrack4_FunkyMidTempo(ctx);
+        this._playTrack4_DarkSynth(ctx);
         break;
     }
   }
@@ -216,168 +217,220 @@ export class MusicEngine {
       const gain = ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(150, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
       gain.gain.setValueAtTime(gainVal, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
       osc.connect(gain);
       gain.connect(this.masterGain);
       osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.15);
+      osc.stop(ctx.currentTime + 0.12);
     } catch (_e) {
       // ignore
     }
   }
 
-  // Track 0: Bright chiptune arpeggio ~140 BPM, square waves
-  private _playTrack0_BrightChiptune(ctx: AudioContext): void {
-    const BPM = 140;
+  // Track 0 -- Upbeat #1: Fast energetic EDM, ~150 BPM
+  // Detuned sawtooth lead arpeggio across 2 octaves, sub-bass kick, punchy snare
+  private _playTrack0_UpbeatEDM(ctx: AudioContext): void {
+    const BPM = 150;
     const sixteenth = (60 / BPM / 4) * 1000;
-    const arpNotes = [523.25, 659.25, 783.99, 1046.5, 783.99, 659.25];
-    const bassNotes = [130.81, 130.81, 164.81, 130.81];
+    // Bright 2-octave arp spanning C5 to C6
+    const arpNotes = [
+      523.25, 659.25, 783.99, 1046.5, 880.0, 659.25, 783.99, 523.25,
+    ];
+    // Sub-bass pulse pattern
+    const bassNotes = [65.41, 65.41, 73.42, 65.41];
     let step = 0;
     let bassStep = 0;
     const trackIdx: TrackIndex = 0;
 
     const id = setInterval(() => {
       if (!this._started || this._currentTrackIndex !== trackIdx) return;
+      // Detuned sawtooth lead
       const freq = arpNotes[step % arpNotes.length];
-      this._playOscillator(ctx, freq, "square", 0.09, 0.5);
-      this._playOscillator(ctx, freq * 2, "sawtooth", 0.07, 0.15, 5);
+      this._playOscillator(ctx, freq, "sawtooth", 0.1, 0.45);
+      // Triangle layer slightly detuned for width
+      this._playOscillator(ctx, freq, "triangle", 0.1, 0.2, 8);
+      // Sub-bass on every quarter note
       if (step % 4 === 0) {
         const bass = bassNotes[bassStep % bassNotes.length];
-        this._playOscillator(ctx, bass, "sawtooth", 0.18, 0.6);
+        this._playOscillator(ctx, bass, "sawtooth", 0.18, 0.65);
+        // Sine sub for extra weight
+        this._playOscillator(ctx, bass * 0.5, "sine", 0.15, 0.5);
+        this._playKick(ctx, 1.1);
         bassStep++;
       }
-      if (step % 2 === 0) this._playNoise(ctx, 0.03, 0.05);
+      // Punchy snare on offbeats (steps 4 and 12 in 16-step bar)
+      if (step % 16 === 4 || step % 16 === 12) {
+        this._playNoise(ctx, 0.11, 0.08, 3000);
+      }
+      // Tight hi-hat every 8th note
+      if (step % 2 === 0) this._playNoise(ctx, 0.025, 0.04, 8000);
       step++;
     }, sixteenth) as unknown as ReturnType<typeof setInterval>;
 
     this.scheduledNotes.push({ intervalId: id });
   }
 
-  // Track 1: Driving bass + lead melody ~155 BPM, sawtooth
-  private _playTrack1_DrivingBass(ctx: AudioContext): void {
-    const BPM = 155;
-    const eighth = (60 / BPM / 2) * 1000;
-    const leadPattern = [
-      392.0, 493.88, 392.0, 523.25, 0, 587.33, 493.88, 392.0,
+  // Track 1 -- Upbeat #2: Melodic synthwave groove, ~160 BPM
+  // Cmaj/Amin chord arpeggiation, 4-on-the-floor kick, hi-hats every 8th
+  private _playTrack1_SynthwaveGroove(ctx: AudioContext): void {
+    const BPM = 160;
+    const sixteenth = (60 / BPM / 4) * 1000;
+    // Cmaj then Amin arpeggio pattern (C4-E4-G4-C5 / A3-C4-E4-A4)
+    const chordArp = [
+      261.63, 329.63, 392.0, 523.25, 220.0, 261.63, 329.63, 440.0, 261.63,
+      329.63, 392.0, 523.25, 220.0, 261.63, 440.0, 329.63,
     ];
-    const bassPattern = [98.0, 98.0, 123.47, 98.0, 110.0, 98.0, 130.81, 98.0];
+    // Sawtooth bass an octave below melody root
+    const bassPattern = [
+      130.81, 130.81, 130.81, 146.83, 110.0, 110.0, 130.81, 110.0,
+    ];
     let step = 0;
+    let bassStep = 0;
     const trackIdx: TrackIndex = 1;
 
     const id = setInterval(() => {
       if (!this._started || this._currentTrackIndex !== trackIdx) return;
-      const lead = leadPattern[step % leadPattern.length];
-      if (lead > 0) {
-        this._playOscillator(ctx, lead, "sawtooth", 0.12, 0.55);
-        this._playOscillator(ctx, lead, "square", 0.12, 0.2, -8);
+      // Detuned sawtooth melody
+      const mel = chordArp[step % chordArp.length];
+      this._playOscillator(ctx, mel, "sawtooth", 0.11, 0.42);
+      this._playOscillator(ctx, mel, "sawtooth", 0.11, 0.15, -7);
+      // Bright sawtooth bass
+      if (step % 2 === 0) {
+        const bass = bassPattern[bassStep % bassPattern.length];
+        this._playOscillator(ctx, bass, "sawtooth", 0.14, 0.7);
+        bassStep++;
       }
-      const bass = bassPattern[step % bassPattern.length];
-      this._playOscillator(ctx, bass, "sawtooth", 0.16, 0.8);
-      if (step % 4 === 0) this._playKick(ctx);
-      if (step % 8 === 2 || step % 8 === 6) this._playNoise(ctx, 0.08, 0.12);
-      this._playNoise(ctx, 0.02, 0.04);
+      // 4-on-the-floor kick every quarter note (every 4 sixteenths)
+      if (step % 4 === 0) this._playKick(ctx, 1.0);
+      // Snare on 2 and 4
+      if (step % 16 === 4 || step % 16 === 12)
+        this._playNoise(ctx, 0.09, 0.09, 2500);
+      // Hi-hat every 8th note
+      if (step % 2 === 0) this._playNoise(ctx, 0.022, 0.035, 9000);
       step++;
-    }, eighth) as unknown as ReturnType<typeof setInterval>;
+    }, sixteenth) as unknown as ReturnType<typeof setInterval>;
 
     this.scheduledNotes.push({ intervalId: id });
   }
 
-  // Track 2: Slower ambient synth ~120 BPM, triangle waves, softer
-  private _playTrack2_AmbientSynth(ctx: AudioContext): void {
-    const BPM = 120;
-    const quarter = (60 / BPM) * 1000;
+  // Track 2 -- Upbeat #3: Bouncy futuristic beat, ~145 BPM
+  // Layered sawtooth + triangle melody, punchy kick+bass hit, snappy snare
+  private _playTrack2_FuturisticBounce(ctx: AudioContext): void {
+    const BPM = 145;
+    const sixteenth = (60 / BPM / 4) * 1000;
+    // Bright bouncy melody line
     const melodyNotes = [
-      261.63, 329.63, 392.0, 440.0, 392.0, 329.63, 261.63, 0,
+      587.33, 659.25, 587.33, 523.25, 659.25, 783.99, 659.25, 523.25, 587.33,
+      523.25, 493.88, 523.25, 587.33, 659.25, 783.99, 659.25,
     ];
-    const padNotes = [130.81, 164.81, 196.0, 220.0];
+    // Bass hits
+    const bassNotes = [73.42, 73.42, 87.31, 73.42];
     let step = 0;
-    let padStep = 0;
+    let bassStep = 0;
     const trackIdx: TrackIndex = 2;
 
     const id = setInterval(() => {
       if (!this._started || this._currentTrackIndex !== trackIdx) return;
+      // Layered synth: sawtooth lead
       const mel = melodyNotes[step % melodyNotes.length];
-      if (mel > 0) {
-        this._playOscillator(ctx, mel, "triangle", 0.35, 0.4);
-        this._playOscillator(ctx, mel * 1.5, "triangle", 0.3, 0.12);
+      this._playOscillator(ctx, mel, "sawtooth", 0.1, 0.4);
+      // Slightly detuned triangle for richness
+      this._playOscillator(ctx, mel, "triangle", 0.1, 0.22, 12);
+      // Punchy kick + bass note on quarter notes
+      if (step % 4 === 0) {
+        const bass = bassNotes[bassStep % bassNotes.length];
+        this._playOscillator(ctx, bass, "sawtooth", 0.14, 0.75);
+        this._playKick(ctx, 1.05);
+        bassStep++;
       }
-      if (step % 2 === 0) {
-        const pad = padNotes[padStep % padNotes.length];
-        this._playOscillator(ctx, pad, "triangle", 0.45, 0.3);
-        padStep++;
+      // Snappy snare noise -- tight envelope
+      if (step % 16 === 4 || step % 16 === 12) {
+        this._playNoise(ctx, 0.13, 0.06, 2000);
       }
-      // Soft hi-hat every other beat
-      if (step % 2 === 1) this._playNoise(ctx, 0.015, 0.06, 8000);
+      // Fast hi-hat every 8th for bounce, extra tick on offbeats
+      this._playNoise(ctx, step % 2 === 0 ? 0.028 : 0.015, 0.03, 10000);
       step++;
-    }, quarter) as unknown as ReturnType<typeof setInterval>;
+    }, sixteenth) as unknown as ReturnType<typeof setInterval>;
 
     this.scheduledNotes.push({ intervalId: id });
   }
 
-  // Track 3: Fast energetic ~170 BPM, heavy sawtooth, aggressive beat
-  private _playTrack3_Aggressive(ctx: AudioContext): void {
-    const BPM = 170;
+  // Track 3 -- Aggressive #1: Hard industrial beat, ~175 BPM
+  // Heavy growling sawtooth bass 55-110 Hz, distorted lead riff, double kick
+  private _playTrack3_IndustrialHard(ctx: AudioContext): void {
+    const BPM = 175;
     const sixteenth = (60 / BPM / 4) * 1000;
-    const riffNotes = [
-      220.0, 220.0, 277.18, 220.0, 246.94, 220.0, 261.63, 220.0,
-    ];
-    const bassRiff = [55.0, 55.0, 65.41, 55.0, 73.42, 55.0, 65.41, 55.0];
+    // Distorted industrial riff -- no melodic softness
+    const riffNotes = [110.0, 110.0, 116.54, 110.0, 98.0, 110.0, 103.83, 110.0];
+    // Low growling bass 55-110 Hz
+    const bassRiff = [55.0, 55.0, 58.27, 55.0, 49.0, 55.0, 51.91, 55.0];
     let step = 0;
     const trackIdx: TrackIndex = 3;
 
     const id = setInterval(() => {
       if (!this._started || this._currentTrackIndex !== trackIdx) return;
+      // Distorted sawtooth lead with heavy detune
       const riff = riffNotes[step % riffNotes.length];
-      this._playOscillator(ctx, riff, "sawtooth", 0.08, 0.7);
-      this._playOscillator(ctx, riff * 2, "sawtooth", 0.06, 0.4, 10);
+      this._playOscillator(ctx, riff, "sawtooth", 0.09, 0.75);
+      this._playOscillator(ctx, riff, "sawtooth", 0.09, 0.55, 15);
+      this._playOscillator(ctx, riff * 2, "sawtooth", 0.07, 0.4, -15);
+      // Heavy growling bass
       const bass = bassRiff[step % bassRiff.length];
       this._playOscillator(ctx, bass, "sawtooth", 0.1, 0.9);
-      // Kick every 4 steps
-      if (step % 4 === 0) this._playKick(ctx, 1.2);
-      // Snare on 8 and 24 (double-time feel)
-      if (step % 16 === 4 || step % 16 === 12) this._playNoise(ctx, 0.12, 0.1);
-      // Constant hi-hat
-      this._playNoise(ctx, 0.025, 0.03);
+      // Double kick pattern -- hit on 1, 3 and syncopated 2.5
+      if (
+        step % 16 === 0 ||
+        step % 16 === 6 ||
+        step % 16 === 8 ||
+        step % 16 === 14
+      ) {
+        this._playKick(ctx, 1.3);
+      }
+      // Heavy snare noise hits on 2 and 4
+      if (step % 16 === 4 || step % 16 === 12) {
+        this._playNoise(ctx, 0.18, 0.1, 1500);
+      }
+      // Constant aggressive hi-hat every 16th
+      this._playNoise(ctx, 0.03, 0.025, 7000);
       step++;
     }, sixteenth) as unknown as ReturnType<typeof setInterval>;
 
     this.scheduledNotes.push({ intervalId: id });
   }
 
-  // Track 4: Mid-tempo funky ~130 BPM, square wave melody with offbeat bass
-  private _playTrack4_FunkyMidTempo(ctx: AudioContext): void {
-    const BPM = 130;
+  // Track 4 -- Aggressive #2: Relentless dark synth, ~180 BPM
+  // Rapid-fire sawtooth bassline ostinato, dark minor key lead, sub-bass sine
+  private _playTrack4_DarkSynth(ctx: AudioContext): void {
+    const BPM = 180;
     const sixteenth = (60 / BPM / 4) * 1000;
-    const funkyMelody = [
-      349.23, 0, 440.0, 0, 392.0, 349.23, 0, 523.25, 440.0, 0, 392.0, 0, 349.23,
-      0, 440.0, 0,
-    ];
-    const bassLine = [
-      87.31, 0, 87.31, 0, 110.0, 0, 87.31, 0, 98.0, 0, 87.31, 0, 116.54, 0,
-      87.31, 0,
-    ];
+    // Dark minor key melody with bent note feel
+    const darkLead = [220.0, 233.08, 220.0, 196.0, 207.65, 196.0, 185.0, 196.0];
+    // Rapid-fire low ostinato bass
+    const bassOstinato = [55.0, 55.0, 61.74, 55.0, 51.91, 55.0, 58.27, 55.0];
     let step = 0;
     const trackIdx: TrackIndex = 4;
 
     const id = setInterval(() => {
       if (!this._started || this._currentTrackIndex !== trackIdx) return;
-      const mel = funkyMelody[step % funkyMelody.length];
-      if (mel > 0) {
-        this._playOscillator(ctx, mel, "square", 0.1, 0.55);
-        this._playOscillator(ctx, mel, "triangle", 0.08, 0.2, -5);
+      // Dark minor lead with detune spread
+      const mel = darkLead[step % darkLead.length];
+      this._playOscillator(ctx, mel, "sawtooth", 0.09, 0.6);
+      this._playOscillator(ctx, mel * 2, "sawtooth", 0.07, 0.35, -10);
+      // Rapid-fire sawtooth bass ostinato every 16th
+      const bass = bassOstinato[step % bassOstinato.length];
+      this._playOscillator(ctx, bass, "sawtooth", 0.1, 0.8);
+      // Sub-bass sine for weight
+      this._playOscillator(ctx, bass * 0.5, "sine", 0.12, 0.55);
+      // Brutal kick on every beat (every 4 sixteenths)
+      if (step % 4 === 0) this._playKick(ctx, 1.4);
+      // Crushing snare
+      if (step % 16 === 4 || step % 16 === 12) {
+        this._playNoise(ctx, 0.2, 0.09, 1200);
       }
-      const bass = bassLine[step % bassLine.length];
-      if (bass > 0) {
-        this._playOscillator(ctx, bass, "square", 0.12, 0.7);
-      }
-      // Kick on 1 and 9
-      if (step % 16 === 0 || step % 16 === 8) this._playKick(ctx, 0.9);
-      // Snare on 5 and 13 (offbeat)
-      if (step % 16 === 4 || step % 16 === 12) this._playNoise(ctx, 0.09, 0.11);
-      // Funky hi-hat pattern
-      if (step % 4 !== 2) this._playNoise(ctx, 0.02, 0.035, 6000);
+      // Constant driving hi-hat
+      this._playNoise(ctx, 0.035, 0.022, 8500);
       step++;
     }, sixteenth) as unknown as ReturnType<typeof setInterval>;
 

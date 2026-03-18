@@ -1,33 +1,25 @@
 # Bitty Builder
 
 ## Current State
-- Tetris game with HomeScreen, GameScreen, LeaderboardScreen
-- Internet Identity auth, nickname management, weekly/all-time leaderboards
-- Sound effects via SoundEngine (Web Audio API)
-- Sign in/out button styled with hot pink outline on both screens
-- No background music, no personal best display
+The game has 5 music tracks in `src/frontend/src/game/music.ts`, synthesized via Web Audio API. Tracks include: a bright chiptune arpeggio (Track 0), driving bass lead (Track 1), slow ambient synth (Track 2), fast aggressive beat (Track 3), and funky mid-tempo (Track 4). Tracks rotate randomly every 60 seconds.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `MusicEngine` class (Web Audio API, no external files) that synthesizes two distinct looping electronic music tracks: Track A for the main menu and Track B for gameplay
-- Music auto-plays on load, persists across screens, switches track when transitioning between home and game
-- Global mute toggle button placed inline next to the sign in/out button on both HomeScreen and GameScreen
-- Personal best display: top-left corner of HomeScreen (opposite the sign in button), shows the authenticated user's all-time highest score by querying `getTopScoresForUser`
-- `useMyBestScore` hook using `actor.getTopScoresForUser(principal)` to fetch the player's scores
+- Nothing new added structurally
 
 ### Modify
-- `App.tsx`: manage music state (isMuted, currentTrack) at app level, pass down to screens; switch track on screen change
-- `HomeScreen.tsx`: add mute button next to auth button (top-right), add personal best display (top-left)
-- `GameScreen.tsx`: add mute button next to pause/sound controls area (top-right, inline with sign in position)
-- `useQueries.ts`: add `useMyBestScore(principal)` hook
+- All 5 tracks in `music.ts` rewritten to a modern futuristic arcade style (synthwave/EDM, not retro 8-bit):
+  - Track 0: Upbeat #1 -- Fast EDM/synthwave feel, bright lead synth, punchy kick, ~150 BPM
+  - Track 1: Upbeat #2 -- Energetic melodic synth, arpeggiated chords, driving groove, ~160 BPM
+  - Track 2: Upbeat #3 -- Bouncy futuristic beat, layered synths, bright and propulsive, ~145 BPM
+  - Track 3: Aggressive #1 -- Hard-hitting industrial beat, heavy distorted bass, dark and intense, ~175 BPM
+  - Track 4: Aggressive #2 -- Relentless dark synth, aggressive bassline and rhythm, punchy and dark, ~180 BPM
+- All tracks use modern synthesis techniques: detuned sawtooths, FM-style modulation, sub-bass, clean filter envelopes -- less square/chiptune, more futuristic
 
 ### Remove
-- Nothing removed
+- Old chiptune/retro character of tracks (square wave dominance, 8-bit feel)
 
 ## Implementation Plan
-1. Create `src/frontend/src/game/music.ts` — MusicEngine class with two synthesized looping tracks using Web Audio API oscillators, gain nodes, and scheduling. Track A: upbeat arpeggiated chiptune for menu. Track B: driving bass + lead for gameplay. Methods: `play(track)`, `stop()`, `setMuted(muted)`, `toggle()`.
-2. Add `useMyBestScore` to `useQueries.ts` using `getTopScoresForUser` with the caller's principal (obtained from `useInternetIdentity`).
-3. Update `App.tsx` to instantiate MusicEngine ref, manage muted state, pass `isMuted`/`onToggleMute` props to screens, start correct track per screen.
-4. Update `HomeScreen.tsx`: accept `isMuted`/`onToggleMute` props, render mute button next to sign in/out, render personal best top-left.
-5. Update `GameScreen.tsx`: accept `isMuted`/`onToggleMute` props, render mute button next to pause button in top HUD.
+1. Rewrite all 5 track methods in `music.ts` with new melodies, basslines, rhythms, and timbres matching modern futuristic arcade style
+2. Keep the MusicEngine class structure, rotation logic, and mute handling intact -- only replace track content
