@@ -64,8 +64,11 @@ actor {
   let scoreEntries = Map.empty<Nat, ScoreEntry>();
   var nextScoreId = 0;
 
-  // Score storage - one entry per player (keyed by Principal)
+  // All-time score storage - one entry per player (keyed by Principal)
   let playerScores = Map.empty<Principal, ScoreEntry>();
+
+  // Weekly score storage - one entry per player, resets each week
+  let weeklyPlayerScores = Map.empty<Principal, ScoreEntry>();
 
   module ScoreEntry {
     public func compare(entry1 : ScoreEntry, entry2 : ScoreEntry) : Order.Order {
@@ -128,17 +131,29 @@ actor {
     nicknameMap.add(caller, newNickname);
     reverseNicknameMap.add(newNickname, caller);
 
-    // Update nickname on existing score entry
+    // Update nickname on all-time score entry
     switch (playerScores.get(caller)) {
       case (null) {};
       case (?existing) {
-        let updated : ScoreEntry = {
+        playerScores.add(caller, {
           principal = existing.principal;
           nickname = newNickname;
           score = existing.score;
           timestamp = existing.timestamp;
-        };
-        playerScores.add(caller, updated);
+        });
+      };
+    };
+
+    // Update nickname on weekly score entry
+    switch (weeklyPlayerScores.get(caller)) {
+      case (null) {};
+      case (?existing) {
+        weeklyPlayerScores.add(caller, {
+          principal = existing.principal;
+          nickname = newNickname;
+          score = existing.score;
+          timestamp = existing.timestamp;
+        });
       };
     };
   };
@@ -154,7 +169,7 @@ actor {
     };
   };
 
-  // Score Submission - one entry per player, only replaces if new score is higher
+  // Score Submission
   public shared ({ caller }) func submitScore(score : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can submit scores");
@@ -165,33 +180,62 @@ actor {
       case (?name) { name };
     };
 
-    // Check existing score - only update if new score is higher
+    let currentTime = Time.now();
+    let weekStart = getCurrentWeekStart(currentTime);
+
+    // Update all-time: only if new score is higher
     switch (playerScores.get(caller)) {
       case (?existing) {
-        if (score <= existing.score) {
-          return;
+        if (score > existing.score) {
+          playerScores.add(caller, {
+            principal = caller;
+            nickname;
+            score;
+            timestamp = currentTime;
+          });
         };
       };
-      case (null) {};
+      case (null) {
+        playerScores.add(caller, {
+          principal = caller;
+          nickname;
+          score;
+          timestamp = currentTime;
+        });
+      };
     };
 
-    let entry : ScoreEntry = {
-      principal = caller;
-      nickname;
-      score;
-      timestamp = Time.now();
+    // Update weekly: always update if it's a new week or score is higher this week
+    switch (weeklyPlayerScores.get(caller)) {
+      case (?existing) {
+        let existingWeekStart = getCurrentWeekStart(existing.timestamp);
+        if (existingWeekStart < weekStart or score > existing.score) {
+          weeklyPlayerScores.add(caller, {
+            principal = caller;
+            nickname;
+            score;
+            timestamp = currentTime;
+          });
+        };
+      };
+      case (null) {
+        weeklyPlayerScores.add(caller, {
+          principal = caller;
+          nickname;
+          score;
+          timestamp = currentTime;
+        });
+      };
     };
-
-    playerScores.add(caller, entry);
   };
 
   public query ({ caller }) func getWeeklyLeaderboard() : async [LeaderboardEntry] {
     let currentTime = Time.now();
     let weekStart = getCurrentWeekStart(currentTime);
 
-    let filteredScores = playerScores.values().filter(
+    let filteredScores = weeklyPlayerScores.values().filter(
       func(entry) {
-        entry.timestamp >= weekStart;
+        getCurrentWeekStart(entry.timestamp) == weekStart;
       }
     );
 

@@ -234,15 +234,22 @@ export default function LeaderboardScreen({ onPlay, onHome }: Props) {
       </div>
 
       {/* Footer */}
-      <footer className="mt-auto pt-8 text-center text-xs text-muted-foreground font-mono">
-        © {new Date().getFullYear()}.{" "}
+      <footer className="mt-auto pt-8 text-center">
         <a
-          href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+          href="https://bittyonicp.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="hover:text-foreground transition-colors"
+          className="font-display font-black text-3xl tracking-wider transition-opacity hover:opacity-80"
+          style={{
+            background:
+              "linear-gradient(135deg, #AAFF00 0%, #00DDFF 50%, #FF00AA 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            filter: "drop-shadow(0 0 12px rgba(170,255,0,0.5))",
+          }}
         >
-          Built with ♥ using caffeine.ai
+          BITTYONICP.COM
         </a>
       </footer>
     </div>
