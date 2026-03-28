@@ -151,6 +151,7 @@ actor {
     };
   };
 
+  // Tournament: Mar 28 2026 21:00 UTC to Apr 4 2026 21:00 UTC
   var tournamentStart : Int = 1743195600_000_000_000;
   var tournamentNextReset : Int = 1743800400_000_000_000;
 
@@ -165,6 +166,7 @@ actor {
   };
 
   // Admin: manually reset the weekly leaderboard
+  // Does NOT change tournamentStart so the 9 PM boundary stays fixed
   public shared func adminResetWeeklyLeaderboard(password : Text) : async () {
     if (password != ADMIN_CHAT_PASSWORD) {
       Runtime.trap("Wrong password");
@@ -173,7 +175,6 @@ actor {
     for (k in keys.vals()) {
       weeklyPlayerScores.remove(k);
     };
-    tournamentStart := Time.now();
   };
 
   // Admin: update the next weekly reset timestamp (nanoseconds)
@@ -182,6 +183,14 @@ actor {
       Runtime.trap("Wrong password");
     };
     tournamentNextReset := newTimestampNs;
+  };
+
+  // Admin: explicitly set the tournament start boundary (nanoseconds)
+  public shared func adminSetTournamentStart(password : Text, newTimestampNs : Int) : async () {
+    if (password != ADMIN_CHAT_PASSWORD) {
+      Runtime.trap("Wrong password");
+    };
+    tournamentStart := newTimestampNs;
   };
 
   public shared ({ caller }) func registerNickname(nickname : Text) : async () {

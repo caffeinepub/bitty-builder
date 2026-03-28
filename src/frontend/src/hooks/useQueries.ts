@@ -24,7 +24,8 @@ export function useWeeklyLeaderboard() {
       return actor.getWeeklyLeaderboard();
     },
     enabled: !!actor && !isFetching,
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchInterval: 15_000,
   });
 }
 

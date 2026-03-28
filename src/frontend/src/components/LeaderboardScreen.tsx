@@ -618,7 +618,7 @@ export default function LeaderboardScreen({ onPlay, onHome }: Props) {
           </TabsList>
 
           <TabsContent value="weekly" className="mt-3">
-            {/* Prominent reset banner */}
+            {/* Tournament active banner */}
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -642,7 +642,7 @@ export default function LeaderboardScreen({ onPlay, onHome }: Props) {
                   filter: "drop-shadow(0 0 6px rgba(255,0,80,0.6))",
                 }}
               >
-                RESETS TODAY AT 9 PM UTC
+                TOURNAMENT ACTIVE — RESETS APR 4 AT 9 PM UTC
               </span>
               <span style={{ fontSize: "1.1rem" }}>⚡</span>
             </motion.div>
