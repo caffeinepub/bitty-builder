@@ -279,6 +279,7 @@ function AdminPanel({
     try {
       await (actor as any).adminResetWeeklyLeaderboard("bittybittywhatwhat");
       setResetStatus("success");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       weeklyRefetch();
     } catch {
       setResetStatus("error");

@@ -152,8 +152,10 @@ actor {
   };
 
   // Tournament: Mar 28 2026 21:00 UTC to Apr 4 2026 21:00 UTC
-  var tournamentStart : Int = 1743195600_000_000_000;
-  var tournamentNextReset : Int = 1743800400_000_000_000;
+  // Mar 28 2026 21:00 UTC = 1774731600 seconds = 1774731600_000_000_000 nanoseconds
+  // Apr 4  2026 21:00 UTC = 1775336400 seconds = 1775336400_000_000_000 nanoseconds
+  var tournamentStart : Int = 1774731600_000_000_000;
+  var tournamentNextReset : Int = 1775336400_000_000_000;
 
   func getCurrentWeeklyPeriodStart(currentTime : Int) : Int {
     if (currentTime >= tournamentNextReset) {
@@ -166,7 +168,7 @@ actor {
   };
 
   // Admin: manually reset the weekly leaderboard
-  // Does NOT change tournamentStart so the 9 PM boundary stays fixed
+  // Clears all weekly scores. Does NOT change tournamentStart so the 9 PM boundary stays fixed.
   public shared func adminResetWeeklyLeaderboard(password : Text) : async () {
     if (password != ADMIN_CHAT_PASSWORD) {
       Runtime.trap("Wrong password");
