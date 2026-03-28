@@ -151,13 +151,21 @@ actor {
     };
   };
 
-  // Tournament boundary -- stable so it survives redeployments
-  // Initialized to Mar 28 2026 21:55 UTC = 1_774_734_944 seconds
-  // Apr 4 2026 21:00 UTC = 1_775_336_400 seconds
-  // On first upgrade from non-stable, Motoko initializes to these values.
-  // Future upgrades preserve whatever value was last set (including admin resets).
-  stable var tournamentStart : Int = 1_774_734_944_000_000_000;
-  stable var tournamentNextReset : Int = 1_775_336_400_000_000_000;
+  // Tournament boundary -- stable so admin resets persist between sessions.
+  // DEPLOY_WEEKLY_RESET is updated each deployment; postupgrade forces a clean
+  // weekly slate on every publish (draft or production), eliminating ghost scores.
+  let DEPLOY_WEEKLY_RESET : Int = 1_774_821_976_000_000_000; // 2026-03-28T22:06:16Z
+  stable var tournamentStart : Int = DEPLOY_WEEKLY_RESET;
+  stable var tournamentNextReset : Int = 1_775_336_400_000_000_000; // Apr 4 2026 21:00 UTC
+
+  // Runs after every upgrade -- wipes weekly scores and resets tournament window.
+  system func postupgrade() {
+    tournamentStart := DEPLOY_WEEKLY_RESET;
+    let keys = weeklyPlayerScores.keys().toArray();
+    for (k in keys.vals()) {
+      weeklyPlayerScores.remove(k);
+    };
+  };
 
   func getCurrentWeeklyPeriodStart(currentTime : Int) : Int {
     if (currentTime >= tournamentNextReset) {
