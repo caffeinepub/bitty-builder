@@ -152,9 +152,9 @@ actor {
   };
 
   // Tournament: Mar 28 2026 21:00 UTC to Apr 4 2026 21:00 UTC
-  // Mar 28 2026 21:00 UTC = 1774731600 seconds = 1774731600_000_000_000 nanoseconds
+  // Mar 28 2026 21:40 UTC = 1774733633 seconds = 1774733633_000_000_000 nanoseconds (reset to tournament start after manual clear)
   // Apr 4  2026 21:00 UTC = 1775336400 seconds = 1775336400_000_000_000 nanoseconds
-  var tournamentStart : Int = 1774731600_000_000_000;
+  var tournamentStart : Int = 1774733633_000_000_000;
   var tournamentNextReset : Int = 1775336400_000_000_000;
 
   func getCurrentWeeklyPeriodStart(currentTime : Int) : Int {
