@@ -151,11 +151,13 @@ actor {
     };
   };
 
-  // Tournament: Mar 28 2026 21:47 UTC (hard reset) to Apr 4 2026 21:00 UTC
-  // Mar 28 2026 21:47 UTC = 1774734438 seconds = 1774734438_000_000_000 nanoseconds
-  // Apr 4  2026 21:00 UTC = 1775336400 seconds = 1775336400_000_000_000 nanoseconds
-  var tournamentStart : Int = 1_774_734_438_000_000_000;
-  var tournamentNextReset : Int = 1_775_336_400_000_000_000;
+  // Tournament boundary -- stable so it survives redeployments
+  // Initialized to Mar 28 2026 21:55 UTC = 1_774_734_944 seconds
+  // Apr 4 2026 21:00 UTC = 1_775_336_400 seconds
+  // On first upgrade from non-stable, Motoko initializes to these values.
+  // Future upgrades preserve whatever value was last set (including admin resets).
+  stable var tournamentStart : Int = 1_774_734_944_000_000_000;
+  stable var tournamentNextReset : Int = 1_775_336_400_000_000_000;
 
   func getCurrentWeeklyPeriodStart(currentTime : Int) : Int {
     if (currentTime >= tournamentNextReset) {
@@ -176,7 +178,7 @@ actor {
     for (k in keys.vals()) {
       weeklyPlayerScores.remove(k);
     };
-    // Also advance tournamentStart to now so old filtered scores don't reappear
+    // Advance tournamentStart to now -- persists because it is stable
     tournamentStart := Time.now();
   };
 
