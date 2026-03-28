@@ -1,15 +1,4 @@
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsDown,
-  Music,
-  Pause,
-  Play,
-  RotateCcw,
-  Volume2,
-  VolumeX,
-} from "lucide-react";
+import { Music, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SoundEngine } from "../game/sounds";
 import { type GameState, TetrisGame } from "../game/tetris";
@@ -339,35 +328,8 @@ export default function GameScreen({
         </div>
       </div>
 
-      {/* Game area */}
-      <div className="flex items-start gap-2 px-2 pt-3">
-        {/* Hold panel */}
-        <div className="flex flex-col items-center gap-1 pt-1">
-          <span
-            className="text-xs font-mono font-black uppercase tracking-widest"
-            style={{
-              color: "#AA00FF",
-              textShadow: "0 0 8px rgba(170,0,255,0.6)",
-            }}
-          >
-            Hold
-          </span>
-          <div
-            className="rounded-sm overflow-hidden"
-            style={{
-              border: "2px solid rgba(170,0,255,0.5)",
-              boxShadow: "0 0 10px rgba(170,0,255,0.3)",
-              opacity: gameState.canHold ? 1 : 0.4,
-            }}
-          >
-            <canvas
-              ref={holdCanvasRef}
-              width={previewSize}
-              height={previewSize}
-            />
-          </div>
-        </div>
-
+      {/* Game area — board only, no side panels */}
+      <div className="flex items-start px-2 pt-3">
         {/* Main canvas */}
         <div className="relative">
           <canvas
@@ -385,7 +347,7 @@ export default function GameScreen({
             }}
           />
 
-          {/* Pause overlay buttons */}
+          {/* Pause overlay */}
           {gameState.status === "paused" && (
             <div
               className="absolute inset-0 flex flex-col items-center justify-center gap-3"
@@ -430,114 +392,86 @@ export default function GameScreen({
             </div>
           )}
         </div>
-
-        {/* Next panel */}
-        <div className="flex flex-col items-center gap-1 pt-1">
-          <span
-            className="text-xs font-mono font-black uppercase tracking-widest"
-            style={{
-              color: "#00DDFF",
-              textShadow: "0 0 8px rgba(0,221,255,0.6)",
-            }}
-          >
-            Next
-          </span>
-          <div
-            className="rounded-sm overflow-hidden"
-            style={{
-              border: "2px solid rgba(0,221,255,0.5)",
-              boxShadow: "0 0 10px rgba(0,221,255,0.3)",
-            }}
-          >
-            <canvas
-              ref={nextCanvasRef}
-              width={previewSize}
-              height={previewSize}
-            />
-          </div>
-        </div>
       </div>
 
-      {/* Touch controls */}
-      <div className="mt-2 flex flex-col items-center gap-2 w-full max-w-xs px-3">
-        {/* Row 1: Hold | Rotate | Hard Drop */}
-        <div className="flex gap-2 w-full justify-center">
-          <TouchBtn
-            onPress={() => gameRef.current?.hold()}
-            className="flex-1"
-            label="HOLD"
-            bgColor="rgba(170,0,255,0.25)"
-            borderColor="#AA00FF"
-            textColor="#CC55FF"
-            glowColor="rgba(170,0,255,0.4)"
-            py="py-[14px]"
-          >
-            <span className="text-sm font-mono font-black">HOLD</span>
-          </TouchBtn>
-          <TouchBtn
-            onPress={() => gameRef.current?.rotateCW()}
-            className="flex-1"
-            label="Rotate"
-            bgColor="rgba(170,255,0,0.2)"
-            borderColor="#AAFF00"
-            textColor="#AAFF00"
-            glowColor="rgba(170,255,0,0.5)"
-            py="py-[14px]"
-          >
-            <RotateCcw size={22} />
-          </TouchBtn>
-          <TouchBtn
-            onPress={() => gameRef.current?.hardDrop()}
-            className="flex-1"
-            label="Drop"
-            bgColor="rgba(255,0,170,0.2)"
-            borderColor="#FF00AA"
-            textColor="#FF00AA"
-            glowColor="rgba(255,0,170,0.5)"
-            py="py-[14px]"
-          >
-            <ChevronsDown size={22} />
-          </TouchBtn>
+      {/* Below-board: Hold + Next boxes side by side, then Hold button */}
+      <div className="flex flex-col items-center gap-3 mt-3 w-full max-w-xs px-3">
+        {/* Hold + Next preview boxes */}
+        <div className="flex gap-4 justify-center w-full">
+          {/* Hold box */}
+          <div className="flex flex-col items-center gap-1">
+            <span
+              className="text-xs font-mono font-black uppercase tracking-widest"
+              style={{
+                color: "#AA00FF",
+                textShadow: "0 0 8px rgba(170,0,255,0.6)",
+              }}
+            >
+              HOLD
+            </span>
+            <div
+              className="rounded-sm overflow-hidden"
+              style={{
+                border: "2px solid rgba(170,0,255,0.5)",
+                boxShadow: "0 0 10px rgba(170,0,255,0.3)",
+                opacity: gameState.canHold ? 1 : 0.4,
+              }}
+            >
+              <canvas
+                ref={holdCanvasRef}
+                width={previewSize}
+                height={previewSize}
+              />
+            </div>
+          </div>
+
+          {/* Next box */}
+          <div className="flex flex-col items-center gap-1">
+            <span
+              className="text-xs font-mono font-black uppercase tracking-widest"
+              style={{
+                color: "#00DDFF",
+                textShadow: "0 0 8px rgba(0,221,255,0.6)",
+              }}
+            >
+              NEXT
+            </span>
+            <div
+              className="rounded-sm overflow-hidden"
+              style={{
+                border: "2px solid rgba(0,221,255,0.5)",
+                boxShadow: "0 0 10px rgba(0,221,255,0.3)",
+              }}
+            >
+              <canvas
+                ref={nextCanvasRef}
+                width={previewSize}
+                height={previewSize}
+              />
+            </div>
+          </div>
         </div>
-        {/* Row 2: Left | Down | Right */}
-        <div className="flex gap-2 w-full">
-          <TouchBtn
-            onPress={() => gameRef.current?.moveLeft()}
-            className="flex-1"
-            label="Left"
-            bgColor="rgba(0,221,255,0.2)"
-            borderColor="#00DDFF"
-            textColor="#00DDFF"
-            glowColor="rgba(0,221,255,0.5)"
-            py="py-[14px]"
-          >
-            <ChevronLeft size={25} strokeWidth={3} />
-          </TouchBtn>
-          <TouchBtn
-            onPress={() => gameRef.current?.softDrop()}
-            className="flex-1"
-            label="Soft Drop"
-            bgColor="rgba(0,221,255,0.15)"
-            borderColor="#00DDFF"
-            textColor="#00DDFF"
-            glowColor="rgba(0,221,255,0.4)"
-            py="py-[14px]"
-          >
-            <ChevronDown size={25} strokeWidth={3} />
-          </TouchBtn>
-          <TouchBtn
-            onPress={() => gameRef.current?.moveRight()}
-            className="flex-1"
-            label="Right"
-            bgColor="rgba(0,221,255,0.2)"
-            borderColor="#00DDFF"
-            textColor="#00DDFF"
-            glowColor="rgba(0,221,255,0.5)"
-            py="py-[14px]"
-          >
-            <ChevronRight size={25} strokeWidth={3} />
-          </TouchBtn>
-        </div>
+
+        {/* Hold button */}
+        <button
+          type="button"
+          onTouchStart={(e) => {
+            e.preventDefault();
+            gameRef.current?.hold();
+          }}
+          onClick={() => gameRef.current?.hold()}
+          data-ocid="game.hold_button"
+          className="w-full py-4 text-base font-display font-black rounded-sm transition-all active:scale-95"
+          style={{
+            background: "rgba(170,0,255,0.25)",
+            border: "2px solid #AA00FF",
+            color: "#CC55FF",
+            boxShadow: "0 0 16px rgba(170,0,255,0.5)",
+            opacity: gameState.canHold ? 1 : 0.4,
+          }}
+        >
+          🔒 HOLD
+        </button>
       </div>
 
       {/* Game Over Modal */}
@@ -550,48 +484,5 @@ export default function GameScreen({
         />
       )}
     </div>
-  );
-}
-
-interface TouchBtnProps {
-  onPress: () => void;
-  children: React.ReactNode;
-  className?: string;
-  label?: string;
-  bgColor?: string;
-  borderColor?: string;
-  textColor?: string;
-  glowColor?: string;
-  py?: string;
-}
-
-function TouchBtn({
-  onPress,
-  children,
-  className = "",
-  bgColor = "rgba(255,255,255,0.1)",
-  borderColor = "rgba(255,255,255,0.3)",
-  textColor = "#fff",
-  glowColor = "rgba(255,255,255,0.2)",
-  py = "py-[14px]",
-}: TouchBtnProps) {
-  return (
-    <button
-      type="button"
-      onTouchStart={(e) => {
-        e.preventDefault();
-        onPress();
-      }}
-      onClick={onPress}
-      className={`flex items-center justify-center ${py} rounded-md border-2 bg-transparent active:scale-95 transition-transform ${className}`}
-      style={{
-        background: bgColor,
-        borderColor: borderColor,
-        color: textColor,
-        boxShadow: `0 0 12px ${glowColor}, inset 0 0 8px ${glowColor}`,
-      }}
-    >
-      {children}
-    </button>
   );
 }

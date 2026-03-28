@@ -11,6 +11,7 @@ import {
   useMyBestScore,
   useMyNickname,
 } from "../hooks/useQueries";
+import ChatPopup from "./ChatPopup";
 
 interface Props {
   onPlay: () => void;
@@ -34,6 +35,7 @@ export default function HomeScreen({
   const { data: myBest } = useMyBestScore(principal);
   const [showChangeName, setShowChangeName] = useState(false);
   const [newName, setNewName] = useState("");
+  const [showChat, setShowChat] = useState(false);
 
   const { data: nameAvailable, isFetching: checkingName } = useCheckNickname(
     newName.trim().length >= 2 ? newName : "",
@@ -274,6 +276,135 @@ export default function HomeScreen({
           >
             🏆 LEADERBOARD
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowChat(true)}
+            data-ocid="chat.open_button"
+            className="btn-arcade w-full py-3 text-base font-display font-black rounded-sm transition-all"
+            style={{
+              background: "transparent",
+              border: "2px solid #00DDFF",
+              color: "#00DDFF",
+              boxShadow:
+                "0 0 20px rgba(0,221,255,0.25), 0 4px 0 rgba(0,0,0,0.5)",
+            }}
+          >
+            💬 PLAYER CHAT
+          </button>
+
+          {/* How to Play */}
+          <div
+            data-ocid="home.how_to_play.panel"
+            className="w-full rounded-sm mt-1"
+            style={{
+              background: "rgba(0,0,0,0.55)",
+              border: "2px solid rgba(170,0,255,0.45)",
+              boxShadow:
+                "0 0 18px rgba(170,0,255,0.2), inset 0 0 20px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div
+              className="px-4 py-2 border-b"
+              style={{ borderColor: "rgba(170,0,255,0.3)" }}
+            >
+              <span
+                className="font-display font-black text-sm tracking-widest uppercase"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #AA00FF, #00DDFF, #AAFF00)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  filter: "drop-shadow(0 0 8px rgba(170,0,255,0.5))",
+                }}
+              >
+                HOW TO PLAY
+              </span>
+            </div>
+            <div className="px-4 py-3 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xl">👈👉</span>
+                <div className="flex-1">
+                  <span
+                    className="text-xs font-display font-black uppercase tracking-wide"
+                    style={{
+                      color: "#AAFF00",
+                      textShadow: "0 0 8px rgba(170,255,0,0.5)",
+                    }}
+                  >
+                    Swipe Left / Right
+                  </span>
+                </div>
+                <span
+                  className="text-xs font-mono"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                >
+                  Move piece
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xl">👇</span>
+                <div className="flex-1">
+                  <span
+                    className="text-xs font-display font-black uppercase tracking-wide"
+                    style={{
+                      color: "#00DDFF",
+                      textShadow: "0 0 8px rgba(0,221,255,0.5)",
+                    }}
+                  >
+                    Swipe Down
+                  </span>
+                </div>
+                <span
+                  className="text-xs font-mono"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                >
+                  Instant drop
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xl">👆</span>
+                <div className="flex-1">
+                  <span
+                    className="text-xs font-display font-black uppercase tracking-wide"
+                    style={{
+                      color: "#FF00AA",
+                      textShadow: "0 0 8px rgba(255,0,170,0.5)",
+                    }}
+                  >
+                    Tap
+                  </span>
+                </div>
+                <span
+                  className="text-xs font-mono"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                >
+                  Rotate piece
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xl">🔒</span>
+                <div className="flex-1">
+                  <span
+                    className="text-xs font-display font-black uppercase tracking-wide"
+                    style={{
+                      color: "#CC55FF",
+                      textShadow: "0 0 8px rgba(170,0,255,0.5)",
+                    }}
+                  >
+                    Hold Button
+                  </span>
+                </div>
+                <span
+                  className="text-xs font-mono"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                >
+                  Save piece
+                </span>
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* Auth / nickname status */}
@@ -437,6 +568,11 @@ export default function HomeScreen({
           BITTYONICP.COM
         </a>
       </footer>
+
+      {/* Chat popup */}
+      <AnimatePresence>
+        {showChat && <ChatPopup onClose={() => setShowChat(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

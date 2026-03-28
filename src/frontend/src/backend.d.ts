@@ -19,6 +19,13 @@ export interface ScoreEntry {
     score: bigint;
     timestamp: bigint;
 }
+export interface ChatMessage {
+    id: bigint;
+    author: Principal;
+    nickname: string;
+    text: string;
+    timestamp: bigint;
+}
 export interface UserProfile {
     name: string;
 }
@@ -44,4 +51,10 @@ export interface backendInterface {
     registerNickname(nickname: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     submitScore(score: bigint): Promise<void>;
+    getChatMessages(): Promise<Array<ChatMessage>>;
+    sendChatMessage(text: string): Promise<void>;
+    deleteOwnChatMessage(id: bigint): Promise<void>;
+    adminDeleteChatMessage(id: bigint, password: string): Promise<void>;
+    adminResetWeeklyLeaderboard(password: string): Promise<void>;
+    adminSetWeeklyResetTime(password: string, timestampNs: bigint): Promise<void>;
 }

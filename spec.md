@@ -1,26 +1,26 @@
 # Bitty Builder
 
 ## Current State
-The backend stores one entry per player in `playerScores` (keyed by Principal), only updating if the new score is higher than the all-time best. The weekly leaderboard filters this same map by timestamp >= current week start. This means:
-- If a player's all-time best was set in a previous week, it won't appear in the weekly leaderboard.
-- If a player submits a lower score this week, it silently succeeds but doesn't update their entry, so nothing appears in the weekly leaderboard.
+LeaderboardScreen.tsx renders weekly and all-time leaderboards with a reset banner. Backend has hardcoded tournament timing vars (tournamentStart, tournamentNextReset) and no admin functions for resetting or reconfiguring the weekly leaderboard at runtime.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `weeklyPlayerScores` map (Principal -> ScoreEntry) that tracks the best score per player for the current week.
-- Weekly score update logic: always update if it's a new week for that player, or if the new score is higher than their existing weekly best.
+- Hidden tap counter (5 taps on leaderboard screen) triggers a centered password overlay
+- Password "bittybittywhatwhat" unlocks admin mode (frontend-only session, auto-expires 5 min)
+- Admin panel popup modal with two actions:
+  1. Manually reset weekly leaderboard (calls new backend function)
+  2. Change next reset date/time (calls new backend function)
+- Backend: `adminResetWeeklyLeaderboard(password: Text)` — clears all weeklyPlayerScores entries
+- Backend: `adminSetWeeklyResetTime(password: Text, newResetTimestamp: Int)` — updates tournamentNextReset
 
 ### Modify
-- `submitScore`: after updating all-time scores, also update `weeklyPlayerScores` using the new weekly logic.
-- `getWeeklyLeaderboard`: query `weeklyPlayerScores` filtered to the current week, instead of `playerScores`.
-- `changeNickname`: also update nickname on `weeklyPlayerScores` entry if it exists.
+- Backend: change `let tournamentStart` and `let tournamentNextReset` to `var` so they can be updated at runtime
 
 ### Remove
-- Nothing removed.
+- Nothing removed
 
 ## Implementation Plan
-1. Add `weeklyPlayerScores` map to backend.
-2. Update `submitScore` to write to `weeklyPlayerScores` (new week or higher weekly score).
-3. Update `getWeeklyLeaderboard` to read from `weeklyPlayerScores`.
-4. Update `changeNickname` to keep `weeklyPlayerScores` nickname in sync.
+1. Update main.mo: make tournament vars mutable, add two admin backend functions
+2. Update backend.d.ts with new function signatures
+3. Update LeaderboardScreen.tsx: add tap counter, password modal, admin panel modal

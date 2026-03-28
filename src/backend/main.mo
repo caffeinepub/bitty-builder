@@ -22,7 +22,6 @@ actor {
 
   let userProfiles = Map.empty<Principal, UserProfile>();
 
-  // User Profile Functions
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     userProfiles.get(caller);
   };
@@ -35,8 +34,8 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be signed in to save profile");
     };
     userProfiles.add(caller, profile);
   };
@@ -56,18 +55,88 @@ actor {
     timestamp : Int;
   };
 
+  // Chat
+  public type ChatMessage = {
+    id : Nat;
+    author : Principal;
+    nickname : Text;
+    text : Text;
+    timestamp : Int;
+  };
+
+  let chatMessages = Map.empty<Nat, ChatMessage>();
+  var nextMessageId = 0;
+  let MAX_CHAT_MESSAGES = 25;
+  let ADMIN_CHAT_PASSWORD = "bittybittywhatwhat";
+
+  public shared ({ caller }) func sendChatMessage(text : Text) : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be signed in to chat");
+    };
+    let nickname = switch (nicknameMap.get(caller)) {
+      case (null) { "Player" };
+      case (?name) { name };
+    };
+    let id = nextMessageId;
+    nextMessageId += 1;
+    chatMessages.add(id, {
+      id;
+      author = caller;
+      nickname;
+      text;
+      timestamp = Time.now();
+    });
+    // Prune to keep only last MAX_CHAT_MESSAGES
+    let allIds = chatMessages.keys().toArray();
+    if (allIds.size() > MAX_CHAT_MESSAGES) {
+      let sorted = allIds.sort();
+      let toDelete : Int = allIds.size() - MAX_CHAT_MESSAGES;
+      var i = 0;
+      label pruneLoop while (i < toDelete) {
+        chatMessages.remove(sorted[i]);
+        i += 1;
+      };
+    };
+  };
+
+  public query func getChatMessages() : async [ChatMessage] {
+    let all = chatMessages.values().toArray();
+    let sorted = all.sort(func(a : ChatMessage, b : ChatMessage) : Order.Order {
+      Int.compare(a.timestamp, b.timestamp);
+    });
+    sorted;
+  };
+
+  public shared ({ caller }) func deleteOwnChatMessage(id : Nat) : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be signed in");
+    };
+    switch (chatMessages.get(id)) {
+      case (null) { Runtime.trap("Message not found") };
+      case (?msg) {
+        if (msg.author != caller) {
+          Runtime.trap("Not your message");
+        };
+        chatMessages.remove(id);
+      };
+    };
+  };
+
+  public shared ({ caller }) func adminDeleteChatMessage(id : Nat, password : Text) : async () {
+    if (password != ADMIN_CHAT_PASSWORD) {
+      Runtime.trap("Wrong password");
+    };
+    chatMessages.remove(id);
+  };
+
   // Nickname registration
   let nicknameMap = Map.empty<Principal, Text>();
   let reverseNicknameMap = Map.empty<Text, Principal>();
 
-  // Legacy stable variables retained for upgrade compatibility (not used for new logic)
   let scoreEntries = Map.empty<Nat, ScoreEntry>();
   var nextScoreId = 0;
 
-  // All-time score storage - one entry per player (keyed by Principal)
   let playerScores = Map.empty<Principal, ScoreEntry>();
-
-  // Weekly score storage - one entry per player, resets each week
   let weeklyPlayerScores = Map.empty<Principal, ScoreEntry>();
 
   module ScoreEntry {
@@ -82,56 +151,75 @@ actor {
     };
   };
 
-  // Nickname Registration
-  public shared ({ caller }) func registerNickname(nickname : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can register nicknames");
-    };
+  var tournamentStart : Int = 1743195600_000_000_000;
+  var tournamentNextReset : Int = 1743800400_000_000_000;
 
+  func getCurrentWeeklyPeriodStart(currentTime : Int) : Int {
+    if (currentTime >= tournamentNextReset) {
+      getCurrentWeekStart(currentTime);
+    } else if (currentTime >= tournamentStart) {
+      tournamentStart;
+    } else {
+      getCurrentWeekStart(currentTime);
+    };
+  };
+
+  // Admin: manually reset the weekly leaderboard
+  public shared func adminResetWeeklyLeaderboard(password : Text) : async () {
+    if (password != ADMIN_CHAT_PASSWORD) {
+      Runtime.trap("Wrong password");
+    };
+    let keys = weeklyPlayerScores.keys().toArray();
+    for (k in keys.vals()) {
+      weeklyPlayerScores.remove(k);
+    };
+    tournamentStart := Time.now();
+  };
+
+  // Admin: update the next weekly reset timestamp (nanoseconds)
+  public shared func adminSetWeeklyResetTime(password : Text, newTimestampNs : Int) : async () {
+    if (password != ADMIN_CHAT_PASSWORD) {
+      Runtime.trap("Wrong password");
+    };
+    tournamentNextReset := newTimestampNs;
+  };
+
+  public shared ({ caller }) func registerNickname(nickname : Text) : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be signed in to register a nickname");
+    };
     if (nicknameMap.containsKey(caller)) {
       Runtime.trap("Nickname already registered for caller");
     };
-
     switch (reverseNicknameMap.get(nickname)) {
       case (null) {};
       case (?_) { Runtime.trap("Nickname already taken") };
     };
-
     nicknameMap.add(caller, nickname);
     reverseNicknameMap.add(nickname, caller);
   };
 
-  // Change Nickname - carries over existing score
   public shared ({ caller }) func changeNickname(newNickname : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can change nicknames");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be signed in to change nickname");
     };
-
-    // New nickname must not be taken by someone else
     switch (reverseNicknameMap.get(newNickname)) {
       case (null) {};
       case (?owner) {
         if (owner != caller) {
           Runtime.trap("Nickname already taken");
         };
-        // Already using this nickname, no-op
         return;
       };
     };
-
-    // Remove old nickname from reverse map
     switch (nicknameMap.get(caller)) {
       case (null) {};
       case (?oldNickname) {
         reverseNicknameMap.remove(oldNickname);
       };
     };
-
-    // Register new nickname
     nicknameMap.add(caller, newNickname);
     reverseNicknameMap.add(newNickname, caller);
-
-    // Update nickname on all-time score entry
     switch (playerScores.get(caller)) {
       case (null) {};
       case (?existing) {
@@ -143,8 +231,6 @@ actor {
         });
       };
     };
-
-    // Update nickname on weekly score entry
     switch (weeklyPlayerScores.get(caller)) {
       case (null) {};
       case (?existing) {
@@ -169,21 +255,16 @@ actor {
     };
   };
 
-  // Score Submission
   public shared ({ caller }) func submitScore(score : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can submit scores");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be signed in to submit scores");
     };
-
     let nickname = switch (nicknameMap.get(caller)) {
       case (null) { Runtime.trap("Nickname not registered") };
       case (?name) { name };
     };
-
     let currentTime = Time.now();
-    let weekStart = getCurrentWeekStart(currentTime);
-
-    // Update all-time: only if new score is higher
+    let currentPeriodStart = getCurrentWeeklyPeriodStart(currentTime);
     switch (playerScores.get(caller)) {
       case (?existing) {
         if (score > existing.score) {
@@ -204,12 +285,10 @@ actor {
         });
       };
     };
-
-    // Update weekly: always update if it's a new week or score is higher this week
     switch (weeklyPlayerScores.get(caller)) {
       case (?existing) {
-        let existingWeekStart = getCurrentWeekStart(existing.timestamp);
-        if (existingWeekStart < weekStart or score > existing.score) {
+        let existingPeriodStart = getCurrentWeeklyPeriodStart(existing.timestamp);
+        if (existingPeriodStart < currentPeriodStart or score > existing.score) {
           weeklyPlayerScores.add(caller, {
             principal = caller;
             nickname;
@@ -231,14 +310,12 @@ actor {
 
   public query ({ caller }) func getWeeklyLeaderboard() : async [LeaderboardEntry] {
     let currentTime = Time.now();
-    let weekStart = getCurrentWeekStart(currentTime);
-
+    let currentPeriodStart = getCurrentWeeklyPeriodStart(currentTime);
     let filteredScores = weeklyPlayerScores.values().filter(
       func(entry) {
-        getCurrentWeekStart(entry.timestamp) == weekStart;
+        getCurrentWeeklyPeriodStart(entry.timestamp) == currentPeriodStart;
       }
     );
-
     buildLeaderboard(filteredScores);
   };
 
@@ -247,7 +324,6 @@ actor {
     buildLeaderboard(allScores);
   };
 
-  // Helper Functions
   func getCurrentWeekStart(timestamp : Int) : Int {
     let secondsPerWeek = 604800;
     let nanosecondsPerSecond = 1_000_000_000;
@@ -260,7 +336,6 @@ actor {
     let sortedScores = scores.sort();
     let arrayOfScores = sortedScores.toArray();
     let topEntries = arrayOfScores.sliceToArray(0, Int.abs(Nat.min(10, arrayOfScores.size())));
-
     Array.tabulate(
       topEntries.size(),
       func(i) {
@@ -275,7 +350,6 @@ actor {
     );
   };
 
-  // Admin-only debug functions
   public query ({ caller }) func getAllScores() : async [ScoreEntry] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can view all scores");
