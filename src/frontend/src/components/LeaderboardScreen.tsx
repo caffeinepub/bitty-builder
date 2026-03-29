@@ -278,18 +278,20 @@ function AdminPanel({
   const [insertStatus, setInsertStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
+  const [insertErrorMsg, setInsertErrorMsg] = useState("");
 
   const handleReset = async () => {
     if (!actor) return;
     onInteraction();
     setResetStatus("loading");
     try {
-      await (actor as any).adminResetWeeklyLeaderboard("bittybittywhatwhat");
+      await actor.adminResetWeeklyLeaderboard("bittybittywhatwhat");
       setResetStatus("success");
       await new Promise((resolve) => setTimeout(resolve, 2000));
       weeklyRefetch();
-    } catch {
+    } catch (e) {
       setResetStatus("error");
+      setErrorMsg(String(e));
     }
   };
 
@@ -300,7 +302,7 @@ function AdminPanel({
     setErrorMsg("");
     try {
       const tsNs = BigInt(new Date(resetTimeValue).getTime()) * 1_000_000n;
-      await (actor as any).adminSetWeeklyResetTime("bittybittywhatwhat", tsNs);
+      await actor.adminSetWeeklyResetTime("bittybittywhatwhat", tsNs);
       setTimeStatus("success");
     } catch (e) {
       setTimeStatus("error");
@@ -312,8 +314,9 @@ function AdminPanel({
     if (!actor || !insertNickname.trim() || !insertScore) return;
     onInteraction();
     setInsertStatus("loading");
+    setInsertErrorMsg("");
     try {
-      await (actor as any).adminInsertScore(
+      await actor.adminInsertScore(
         "bittybittywhatwhat",
         insertNickname.trim(),
         BigInt(Math.floor(Number(insertScore))),
@@ -322,8 +325,9 @@ function AdminPanel({
       await new Promise((resolve) => setTimeout(resolve, 2000));
       weeklyRefetch();
       setInsertStatus("idle");
-    } catch {
+    } catch (e) {
       setInsertStatus("error");
+      setInsertErrorMsg(String(e));
     }
   };
 
@@ -413,11 +417,11 @@ function AdminPanel({
           )}
           {resetStatus === "error" && (
             <p
-              className="font-mono text-xs text-center"
+              className="font-mono text-xs text-center break-words"
               style={{ color: "#FF0050" }}
               data-ocid="admin.error_state"
             >
-              ✗ Reset failed. Try again.
+              ✗ {errorMsg || "Reset failed. Try again."}
             </p>
           )}
         </div>
@@ -474,7 +478,7 @@ function AdminPanel({
           )}
           {timeStatus === "error" && (
             <p
-              className="font-mono text-xs text-center"
+              className="font-mono text-xs text-center break-words"
               style={{ color: "#FF0050" }}
             >
               ✗ {errorMsg || "Failed to update. Try again."}
@@ -497,7 +501,7 @@ function AdminPanel({
             INSERT SCORE BY NICKNAME
           </p>
           <p className="font-mono text-xs" style={{ color: "#888" }}>
-            Manually add a score for an existing player nickname.
+            Manually add a score. Works even if the player is not registered.
           </p>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
@@ -506,6 +510,7 @@ function AdminPanel({
               onChange={(e) => {
                 setInsertNickname(e.target.value);
                 setInsertStatus("idle");
+                setInsertErrorMsg("");
                 onInteraction();
               }}
               placeholder="Nickname e.g. dolby"
@@ -522,6 +527,7 @@ function AdminPanel({
               onChange={(e) => {
                 setInsertScore(e.target.value);
                 setInsertStatus("idle");
+                setInsertErrorMsg("");
                 onInteraction();
               }}
               placeholder="Score e.g. 40600"
@@ -561,11 +567,11 @@ function AdminPanel({
           )}
           {insertStatus === "error" && (
             <p
-              className="font-mono text-xs text-center"
+              className="font-mono text-xs text-center break-words"
               style={{ color: "#FF0050" }}
               data-ocid="admin.error_state"
             >
-              ✗ Nickname not found or failed.
+              ✗ {insertErrorMsg || "Insert failed. Try again."}
             </p>
           )}
         </div>
@@ -611,7 +617,6 @@ export default function LeaderboardScreen({ onPlay, onHome }: Props) {
     if (adminExpireRef.current) clearTimeout(adminExpireRef.current);
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
@@ -629,7 +634,6 @@ export default function LeaderboardScreen({ onPlay, onHome }: Props) {
         setShowPasswordOverlay(true);
         return 0;
       }
-      // Reset after 3s of no taps
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
       tapTimerRef.current = setTimeout(() => setTapCount(0), 3000);
       return next;

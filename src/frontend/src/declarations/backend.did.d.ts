@@ -52,6 +52,8 @@ export interface _SERVICE {
   'adminDeleteChatMessage' : ActorMethod<[bigint, string], undefined>,
   'adminResetWeeklyLeaderboard' : ActorMethod<[string], undefined>,
   'adminSetWeeklyResetTime' : ActorMethod<[string, bigint], undefined>,
+  'adminSetTournamentStart' : ActorMethod<[string, bigint], undefined>,
+  'adminInsertScore' : ActorMethod<[string, string, bigint], undefined>,
   'changeNickname' : ActorMethod<[string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

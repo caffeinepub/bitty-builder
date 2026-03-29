@@ -1,21 +1,23 @@
 # Bitty Builder
 
 ## Current State
-Backend has hardcoded tournament timestamps set to 2025 values (one year ago), causing the weekly leaderboard boundary logic to never trigger for the 2026 tournament. Admin reset clears the map correctly but the ISO-week filter still shows current-week scores, making it appear the reset did nothing.
+Admin insert score fails silently -- the frontend shows a hardcoded error message so the real cause is never visible. The `getWeeklyLeaderboard` query filters `adminForcedWeeklyScores` by timestamp, which can cause inserted entries to not appear if there is any timestamp window mismatch.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Delay before leaderboard refetch after admin reset (wait for ICP consensus)
+- `insertErrorMsg` state in AdminPanel to capture and display the real error string from the catch block
 
 ### Modify
-- Fix `tournamentStart` from 1743195600_000_000_000 (Mar 28 2025) to 1774731600_000_000_000 (Mar 28 2026 21:00 UTC)
-- Fix `tournamentNextReset` from 1743800400_000_000_000 (Apr 4 2025) to 1775336400_000_000_000 (Apr 4 2026 21:00 UTC)
-- Add 2-second delay in frontend AdminPanel before calling `weeklyRefetch()` after a successful reset
+- `getWeeklyLeaderboard` (backend): Remove timestamp filter on `adminForcedWeeklyScores` -- forced entries always appear, only filtered out if the nickname already has a real weekly score. They are cleared on `adminResetWeeklyLeaderboard` as before.
+- `adminInsertScore` (backend): When nickname is not registered, use `tournamentStart + 1_000_000_000` as the entry timestamp to guarantee it falls within the tournament window if the timestamp filter is ever re-added.
+- `handleInsertScore` (frontend): Capture the real error in `catch (e)` and store in `insertErrorMsg`, display it in the UI instead of the hardcoded string.
+- All other `catch {}` blocks in AdminPanel updated to capture real errors.
+- `(actor as any)` casts removed -- use properly typed `actor` calls directly.
 
 ### Remove
-- Nothing
+- Hardcoded "Nickname not found or failed." error message
 
 ## Implementation Plan
-1. Update `src/backend/main.mo` tournament timestamp constants
-2. Update `src/frontend/src/components/LeaderboardScreen.tsx` AdminPanel handleReset to await a 2s delay before refetch
+1. Update `main.mo`: remove timestamp filter from forced scores in `getWeeklyLeaderboard`; update `adminInsertScore` timestamp logic
+2. Update `LeaderboardScreen.tsx`: add `insertErrorMsg` state, capture real error in catch, display it

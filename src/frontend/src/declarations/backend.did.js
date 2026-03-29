@@ -65,6 +65,8 @@ export const idlService = IDL.Service({
   'adminDeleteChatMessage' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'adminResetWeeklyLeaderboard' : IDL.Func([IDL.Text], [], []),
   'adminSetWeeklyResetTime' : IDL.Func([IDL.Text, IDL.Int], [], []),
+  'adminSetTournamentStart' : IDL.Func([IDL.Text, IDL.Int], [], []),
+  'adminInsertScore' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat], [], []),
   'changeNickname' : IDL.Func([IDL.Text], [], []),
 });
 
@@ -136,6 +138,8 @@ export const idlFactory = ({ IDL }) => {
     'adminDeleteChatMessage' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'adminResetWeeklyLeaderboard' : IDL.Func([IDL.Text], [], []),
     'adminSetWeeklyResetTime' : IDL.Func([IDL.Text, IDL.Int], [], []),
+    'adminSetTournamentStart' : IDL.Func([IDL.Text, IDL.Int], [], []),
+    'adminInsertScore' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat], [], []),
     'changeNickname' : IDL.Func([IDL.Text], [], []),
   });
 };

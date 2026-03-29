@@ -69,6 +69,80 @@ actor {
   let MAX_CHAT_MESSAGES = 25;
   let ADMIN_CHAT_PASSWORD = "bittybittywhatwhat";
 
+  // Nickname registration
+  let nicknameMap = Map.empty<Principal, Text>();
+  let reverseNicknameMap = Map.empty<Text, Principal>();
+
+  let scoreEntries = Map.empty<Nat, ScoreEntry>();
+  var nextScoreId = 0;
+
+  let playerScores = Map.empty<Principal, ScoreEntry>();
+  let weeklyPlayerScores = Map.empty<Principal, ScoreEntry>();
+
+  // Admin-forced weekly scores keyed by nickname
+  // These are ALWAYS shown in the weekly leaderboard regardless of timestamp.
+  // They are cleared on adminResetWeeklyLeaderboard and removed when the player submits their own score.
+  let adminForcedWeeklyScores = Map.empty<Text, ScoreEntry>();
+
+  // ── Stable backing storage ──────────────────────────────────────────────────
+  stable var stableNicknameEntries       : [(Principal, Text)]        = [];
+  stable var stableReverseNicknameEntries: [(Text, Principal)]        = [];
+  stable var stablePlayerScoreEntries    : [(Principal, ScoreEntry)]  = [];
+  stable var stableWeeklyScoreEntries    : [(Principal, ScoreEntry)]  = [];
+  stable var stableForcedScoreEntries    : [(Text, ScoreEntry)]       = [];
+  stable var stableChatEntries           : [(Nat, ChatMessage)]       = [];
+  stable var stableNextMessageId         : Nat                        = 0;
+  stable var stableNextScoreId           : Nat                        = 0;
+
+  system func preupgrade() {
+    stableNicknameEntries        := nicknameMap.entries().toArray();
+    stableReverseNicknameEntries := reverseNicknameMap.entries().toArray();
+    stablePlayerScoreEntries     := playerScores.entries().toArray();
+    stableWeeklyScoreEntries     := weeklyPlayerScores.entries().toArray();
+    stableForcedScoreEntries     := adminForcedWeeklyScores.entries().toArray();
+    stableChatEntries            := chatMessages.entries().toArray();
+    stableNextMessageId          := nextMessageId;
+    stableNextScoreId            := nextScoreId;
+  };
+
+  system func postupgrade() {
+    for ((k, v) in stableNicknameEntries.vals())        { nicknameMap.add(k, v) };
+    for ((k, v) in stableReverseNicknameEntries.vals()) { reverseNicknameMap.add(k, v) };
+    for ((k, v) in stablePlayerScoreEntries.vals())     { playerScores.add(k, v) };
+    for ((k, v) in stableWeeklyScoreEntries.vals())     { weeklyPlayerScores.add(k, v) };
+    for ((k, v) in stableForcedScoreEntries.vals())     { adminForcedWeeklyScores.add(k, v) };
+    for ((k, v) in stableChatEntries.vals())            { chatMessages.add(k, v) };
+    nextMessageId := stableNextMessageId;
+    nextScoreId   := stableNextScoreId;
+  };
+  // ───────────────────────────────────────────────────────────────────────────
+
+  module ScoreEntry {
+    public func compare(entry1 : ScoreEntry, entry2 : ScoreEntry) : Order.Order {
+      Nat.compare(entry2.score, entry1.score);
+    };
+  };
+
+  module LeaderboardEntry {
+    public func compare(entry1 : LeaderboardEntry, entry2 : LeaderboardEntry) : Order.Order {
+      Nat.compare(entry2.score, entry1.score);
+    };
+  };
+
+  stable var DEPLOY_WEEKLY_RESET : Int = 1_774_821_976_000_000_000;
+  stable var tournamentStart     : Int = 1_774_821_976_000_000_000; // 2026-03-28T22:06:16Z
+  stable var tournamentNextReset : Int = 1_775_336_400_000_000_000; // Apr 4 2026 21:00 UTC
+
+  func getCurrentWeeklyPeriodStart(currentTime : Int) : Int {
+    if (currentTime >= tournamentNextReset) {
+      getCurrentWeekStart(currentTime);
+    } else if (currentTime >= tournamentStart) {
+      tournamentStart;
+    } else {
+      getCurrentWeekStart(currentTime);
+    };
+  };
+
   public shared ({ caller }) func sendChatMessage(text : Text) : async () {
     if (caller.isAnonymous()) {
       Runtime.trap("Must be signed in to chat");
@@ -86,7 +160,6 @@ actor {
       text;
       timestamp = Time.now();
     });
-    // Prune to keep only last MAX_CHAT_MESSAGES
     let allIds = chatMessages.keys().toArray();
     if (allIds.size() > MAX_CHAT_MESSAGES) {
       let sorted = allIds.sort();
@@ -129,47 +202,6 @@ actor {
     chatMessages.remove(id);
   };
 
-  // Nickname registration
-  let nicknameMap = Map.empty<Principal, Text>();
-  let reverseNicknameMap = Map.empty<Text, Principal>();
-
-  let scoreEntries = Map.empty<Nat, ScoreEntry>();
-  var nextScoreId = 0;
-
-  let playerScores = Map.empty<Principal, ScoreEntry>();
-  let weeklyPlayerScores = Map.empty<Principal, ScoreEntry>();
-
-  module ScoreEntry {
-    public func compare(entry1 : ScoreEntry, entry2 : ScoreEntry) : Order.Order {
-      Nat.compare(entry2.score, entry1.score);
-    };
-  };
-
-  module LeaderboardEntry {
-    public func compare(entry1 : LeaderboardEntry, entry2 : LeaderboardEntry) : Order.Order {
-      Nat.compare(entry2.score, entry1.score);
-    };
-  };
-
-  // Kept for upgrade compatibility -- was used by the now-removed postupgrade wipe.
-  // Do NOT remove this stable var or the canister upgrade will be rejected.
-  stable var DEPLOY_WEEKLY_RESET : Int = 1_774_821_976_000_000_000; // 2026-03-28T22:06:16Z
-
-  // Tournament boundary -- stable so admin resets and tournament windows persist across deploys.
-  // postupgrade has been intentionally removed so deployments never wipe weekly scores.
-  stable var tournamentStart : Int = 1_774_821_976_000_000_000; // 2026-03-28T22:06:16Z
-  stable var tournamentNextReset : Int = 1_775_336_400_000_000_000; // Apr 4 2026 21:00 UTC
-
-  func getCurrentWeeklyPeriodStart(currentTime : Int) : Int {
-    if (currentTime >= tournamentNextReset) {
-      getCurrentWeekStart(currentTime);
-    } else if (currentTime >= tournamentStart) {
-      tournamentStart;
-    } else {
-      getCurrentWeekStart(currentTime);
-    };
-  };
-
   // Admin: manually reset the weekly leaderboard
   public shared func adminResetWeeklyLeaderboard(password : Text) : async () {
     if (password != ADMIN_CHAT_PASSWORD) {
@@ -179,7 +211,10 @@ actor {
     for (k in keys.vals()) {
       weeklyPlayerScores.remove(k);
     };
-    // Advance tournamentStart to now -- persists because it is stable
+    let forcedKeys = adminForcedWeeklyScores.keys().toArray();
+    for (k in forcedKeys.vals()) {
+      adminForcedWeeklyScores.remove(k);
+    };
     tournamentStart := Time.now();
   };
 
@@ -199,33 +234,45 @@ actor {
     tournamentStart := newTimestampNs;
   };
 
-  // Admin: manually insert a score for a player by nickname (force-insert, bypasses period check)
+  // Admin: insert a score by nickname.
+  // If the nickname is registered, the score goes into the regular weekly and all-time maps.
+  // If not registered, it goes into adminForcedWeeklyScores which is ALWAYS shown in the weekly leaderboard.
   public shared func adminInsertScore(password : Text, nickname : Text, score : Nat) : async () {
     if (password != ADMIN_CHAT_PASSWORD) {
       Runtime.trap("Wrong password");
     };
-    let principal = switch (reverseNicknameMap.get(nickname)) {
-      case (null) { Runtime.trap("Nickname not found") };
-      case (?p) { p };
-    };
     let currentTime = Time.now();
-    let entry : ScoreEntry = {
-      principal;
-      nickname;
-      score;
-      timestamp = currentTime;
-    };
-    // Always overwrite weekly entry for this player
-    weeklyPlayerScores.add(principal, entry);
-    // All-time: only overwrite if this score is higher
-    switch (playerScores.get(principal)) {
-      case (?existing) {
-        if (score > existing.score) {
-          playerScores.add(principal, entry);
+    // Use tournamentStart + 1s as timestamp so the entry is definitely within the tournament window
+    let entryTimestamp = tournamentStart + 1_000_000_000;
+    switch (reverseNicknameMap.get(nickname)) {
+      case (?principal) {
+        let entry : ScoreEntry = {
+          principal;
+          nickname;
+          score;
+          timestamp = currentTime;
+        };
+        weeklyPlayerScores.add(principal, entry);
+        switch (playerScores.get(principal)) {
+          case (?existing) {
+            if (score > existing.score) {
+              playerScores.add(principal, entry);
+            };
+          };
+          case (null) {
+            playerScores.add(principal, entry);
+          };
         };
       };
       case (null) {
-        playerScores.add(principal, entry);
+        // Nickname not registered -- force into the always-visible forced scores map
+        let entry : ScoreEntry = {
+          principal = Principal.fromText("2vxsx-fae");
+          nickname;
+          score;
+          timestamp = entryTimestamp;
+        };
+        adminForcedWeeklyScores.add(nickname, entry);
       };
     };
   };
@@ -311,7 +358,6 @@ actor {
     };
     let currentTime = Time.now();
     let currentPeriodStart = getCurrentWeeklyPeriodStart(currentTime);
-    // All-time: only update if new score is higher
     switch (playerScores.get(caller)) {
       case (?existing) {
         if (score > existing.score) {
@@ -332,7 +378,6 @@ actor {
         });
       };
     };
-    // Weekly: update if from a different period OR new score is higher in current period
     switch (weeklyPlayerScores.get(caller)) {
       case (?existing) {
         let existingPeriodStart = getCurrentWeeklyPeriodStart(existing.timestamp);
@@ -354,17 +399,42 @@ actor {
         });
       };
     };
+    // If this player had an admin-forced entry, remove it now that they have a real score
+    adminForcedWeeklyScores.remove(nickname);
   };
 
   public query ({ caller }) func getWeeklyLeaderboard() : async [LeaderboardEntry] {
     let currentTime = Time.now();
     let currentPeriodStart = getCurrentWeeklyPeriodStart(currentTime);
-    let filteredScores = weeklyPlayerScores.values().filter(
+
+    let regularArr = weeklyPlayerScores.values().filter(
       func(entry) {
         getCurrentWeeklyPeriodStart(entry.timestamp) == currentPeriodStart;
       }
-    );
-    buildLeaderboard(filteredScores);
+    ).toArray();
+
+    // Build a set of nicknames already covered by regular scores
+    let coveredNicknames = Map.empty<Text, Bool>();
+    for (entry in regularArr.vals()) {
+      coveredNicknames.add(entry.nickname, true);
+    };
+
+    // Admin-forced entries are ALWAYS included regardless of timestamp.
+    // They represent manually inserted scores that should always be visible
+    // until the next admin reset.
+    let forcedArr = adminForcedWeeklyScores.values().filter(
+      func(entry) {
+        not coveredNicknames.containsKey(entry.nickname);
+      }
+    ).toArray();
+
+    let n1 = regularArr.size();
+    let n2 = forcedArr.size();
+    let combined = Array.tabulate(n1 + n2, func(i) {
+      if (i < n1) { regularArr[i] } else { forcedArr[i - n1] };
+    });
+
+    buildLeaderboard(combined.vals());
   };
 
   public query ({ caller }) func getAllTimeLeaderboard() : async [LeaderboardEntry] {

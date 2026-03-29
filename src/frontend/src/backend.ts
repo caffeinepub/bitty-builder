@@ -134,6 +134,10 @@ export interface backendInterface {
     sendChatMessage(text: string): Promise<void>;
     deleteOwnChatMessage(id: bigint): Promise<void>;
     adminDeleteChatMessage(id: bigint, password: string): Promise<void>;
+    adminResetWeeklyLeaderboard(password: string): Promise<void>;
+    adminSetWeeklyResetTime(password: string, timestampNs: bigint): Promise<void>;
+    adminSetTournamentStart(password: string, timestampNs: bigint): Promise<void>;
+    adminInsertScore(password: string, nickname: string, score: bigint): Promise<void>;
 }
 import type { UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -429,6 +433,62 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.adminDeleteChatMessage(arg0, arg1);
+            return result;
+        }
+    }
+    async adminResetWeeklyLeaderboard(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.adminResetWeeklyLeaderboard(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.adminResetWeeklyLeaderboard(arg0);
+            return result;
+        }
+    }
+    async adminSetWeeklyResetTime(arg0: string, arg1: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.adminSetWeeklyResetTime(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.adminSetWeeklyResetTime(arg0, arg1);
+            return result;
+        }
+    }
+    async adminSetTournamentStart(arg0: string, arg1: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.adminSetTournamentStart(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.adminSetTournamentStart(arg0, arg1);
+            return result;
+        }
+    }
+    async adminInsertScore(arg0: string, arg1: string, arg2: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.adminInsertScore(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.adminInsertScore(arg0, arg1, arg2);
             return result;
         }
     }
