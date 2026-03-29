@@ -99,7 +99,7 @@ function LeaderboardTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {entries.slice(0, 10).map((entry, i) => (
+        {entries.map((entry, i) => (
           <motion.tr
             key={`${entry.nickname}-${i}`}
             initial={{ opacity: 0, x: -10 }}

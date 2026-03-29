@@ -357,7 +357,7 @@ actor {
   func buildLeaderboard(scores : Iter.Iter<ScoreEntry>) : [LeaderboardEntry] {
     let sortedScores = scores.sort();
     let arrayOfScores = sortedScores.toArray();
-    let topEntries = arrayOfScores.sliceToArray(0, Int.abs(Nat.min(10, arrayOfScores.size())));
+    let topEntries = arrayOfScores.sliceToArray(0, Int.abs(Nat.min(50, arrayOfScores.size())));
     Array.tabulate(
       topEntries.size(),
       func(i) {
