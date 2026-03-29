@@ -11,6 +11,7 @@ export interface LeaderboardEntry {
   'rank' : bigint,
   'score' : bigint,
   'timestamp' : bigint,
+  'principal' : Principal,
 }
 export interface ScoreEntry {
   'principal' : Principal,

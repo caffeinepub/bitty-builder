@@ -59,6 +59,17 @@ function LeaderboardTable({
   isLoading: boolean;
   emptyMessage: string;
 }) {
+  const [popupPrincipal, setPopupPrincipal] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyPrincipal = () => {
+    if (!popupPrincipal) return;
+    navigator.clipboard.writeText(popupPrincipal).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-2 mt-2" data-ocid="leaderboard.loading_state">
@@ -81,67 +92,167 @@ function LeaderboardTable({
   }
 
   return (
-    <Table data-ocid="leaderboard.table">
-      <TableHeader>
-        <TableRow className="border-border/30 hover:bg-transparent">
-          <TableHead className="font-mono text-xs text-muted-foreground w-12">
-            Rank
-          </TableHead>
-          <TableHead className="font-mono text-xs text-muted-foreground">
-            Player
-          </TableHead>
-          <TableHead className="font-mono text-xs text-muted-foreground text-right">
-            Score
-          </TableHead>
-          <TableHead className="font-mono text-xs text-muted-foreground text-right hidden sm:table-cell">
-            Date
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {entries.map((entry, i) => (
-          <motion.tr
-            key={`${entry.nickname}-${i}`}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.05 }}
-            data-ocid={`leaderboard.item.${i + 1}`}
-            className="border-border/20 hover:bg-muted/20"
+    <>
+      <Table data-ocid="leaderboard.table">
+        <TableHeader>
+          <TableRow className="border-border/30 hover:bg-transparent">
+            <TableHead className="font-mono text-xs text-muted-foreground w-12">
+              Rank
+            </TableHead>
+            <TableHead className="font-mono text-xs text-muted-foreground">
+              Player
+            </TableHead>
+            <TableHead className="font-mono text-xs text-muted-foreground text-right">
+              Score
+            </TableHead>
+            <TableHead className="font-mono text-xs text-muted-foreground text-right hidden sm:table-cell">
+              Date
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {entries.map((entry, i) => (
+            <motion.tr
+              key={`${entry.nickname}-${i}`}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.05 }}
+              data-ocid={`leaderboard.item.${i + 1}`}
+              className="border-border/20 hover:bg-muted/20"
+            >
+              <TableCell className="py-2">
+                <RankBadge rank={Number(entry.rank)} />
+              </TableCell>
+              <TableCell className="py-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ep = entry as LeaderboardEntry & {
+                      principal: { toText: () => string };
+                    };
+                    setPopupPrincipal(ep.principal.toText());
+                    setCopied(false);
+                  }}
+                  data-ocid="leaderboard.item.button"
+                  className="font-mono text-sm font-semibold text-left hover:underline"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    color:
+                      i === 0
+                        ? "#FFE500"
+                        : i === 1
+                          ? "#C0C0C0"
+                          : i === 2
+                            ? "#CD7F32"
+                            : "inherit",
+                  }}
+                >
+                  {entry.nickname}
+                </button>
+              </TableCell>
+              <TableCell className="py-2 text-right">
+                <span
+                  className="font-mono text-sm"
+                  style={{ color: "#AAFF00" }}
+                >
+                  {formatScore(entry.score)}
+                </span>
+              </TableCell>
+              <TableCell className="py-2 text-right hidden sm:table-cell">
+                <span className="font-mono text-xs text-muted-foreground">
+                  {formatDate(entry.timestamp)}
+                </span>
+              </TableCell>
+            </motion.tr>
+          ))}
+        </TableBody>
+      </Table>
+
+      {popupPrincipal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(6,6,15,0.88)" }}
+          onClick={(e) =>
+            e.target === e.currentTarget && setPopupPrincipal(null)
+          }
+          onKeyDown={(e) => e.key === "Escape" && setPopupPrincipal(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.85 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="mx-4 w-full max-w-sm rounded-sm p-5"
+            style={{
+              background: "#0a0a1a",
+              border: "2px solid #FF00AA",
+              boxShadow: "0 0 40px rgba(255,0,170,0.3)",
+            }}
           >
-            <TableCell className="py-2">
-              <RankBadge rank={Number(entry.rank)} />
-            </TableCell>
-            <TableCell className="py-2">
-              <span
-                className="font-mono text-sm font-semibold"
+            <h3
+              className="font-black text-base uppercase tracking-widest mb-1"
+              style={{ color: "#FF00AA" }}
+            >
+              Player Principal
+            </h3>
+            <p
+              className="text-xs mb-3"
+              style={{ color: "rgba(255,255,255,0.5)" }}
+            >
+              Tap to copy this player's principal ID
+            </p>
+            <div
+              className="rounded-sm p-3 mb-4"
+              style={{
+                background: "rgba(0,0,0,0.4)",
+                border: "1px solid rgba(255,0,170,0.3)",
+              }}
+            >
+              <p
+                className="font-mono text-xs break-all"
                 style={{
-                  color:
-                    i === 0
-                      ? "#FFE500"
-                      : i === 1
-                        ? "#C0C0C0"
-                        : i === 2
-                          ? "#CD7F32"
-                          : "inherit",
+                  color: "rgba(255,255,255,0.8)",
+                  wordBreak: "break-all",
                 }}
               >
-                {entry.nickname}
-              </span>
-            </TableCell>
-            <TableCell className="py-2 text-right">
-              <span className="font-mono text-sm" style={{ color: "#AAFF00" }}>
-                {formatScore(entry.score)}
-              </span>
-            </TableCell>
-            <TableCell className="py-2 text-right hidden sm:table-cell">
-              <span className="font-mono text-xs text-muted-foreground">
-                {formatDate(entry.timestamp)}
-              </span>
-            </TableCell>
-          </motion.tr>
-        ))}
-      </TableBody>
-    </Table>
+                {popupPrincipal}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleCopyPrincipal}
+                data-ocid="leaderboard.principal.button"
+                className="flex-1 py-2 text-sm font-black uppercase tracking-wider rounded-sm transition-all"
+                style={{
+                  background: copied ? "#FF00AA" : "transparent",
+                  border: "2px solid #FF00AA",
+                  color: copied ? "#06060f" : "#FF00AA",
+                }}
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPopupPrincipal(null)}
+                data-ocid="leaderboard.principal.close_button"
+                className="flex-1 py-2 text-sm font-black uppercase tracking-wider rounded-sm transition-all"
+                style={{
+                  background: "transparent",
+                  border: "2px solid rgba(255,255,255,0.2)",
+                  color: "rgba(255,255,255,0.5)",
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </>
   );
 }
 

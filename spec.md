@@ -1,23 +1,36 @@
 # Bitty Builder
 
 ## Current State
-Admin insert score fails silently -- the frontend shows a hardcoded error message so the real cause is never visible. The `getWeeklyLeaderboard` query filters `adminForcedWeeklyScores` by timestamp, which can cause inserted entries to not appear if there is any timestamp window mismatch.
+A mobile-first Tetris game with Internet Identity login, leaderboards (weekly + all-time, top 50), admin panel, tournament banner, music, and social sharing. Backend uses stable storage for all data maps.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `insertErrorMsg` state in AdminPanel to capture and display the real error string from the catch block
+- **Wallet Modal**: Accessible via a WALLET button on the main menu (signed-in users only). Shows:
+  - Principal ID (copyable text)
+  - ICP Account ID derived from principal (copyable hex string)
+  - Live $ICP balance (queried from ICP ledger `ryjl3-tyaaa-aaaaa-aaaba-cai` via ICRC-1)
+  - Live $BITTYICP balance (queried from `qroj6-lyaaa-aaaam-qeqta-cai` via ICRC-1)
+  - Send section: choose token, enter recipient principal + amount, execute real ICRC-1 transfer
+  - Receive section: show both principal ID and account ID with copy buttons
+- **Leaderboard principal popup**: Clicking any player's nickname opens a small popup with their principal ID and a copy button
+- `principal` field on `LeaderboardEntry` type (backend + all bindings)
+- `src/frontend/src/utils/icrc1.ts`: ICRC-1 actor factory + SHA-224-based ICP account ID derivation
 
 ### Modify
-- `getWeeklyLeaderboard` (backend): Remove timestamp filter on `adminForcedWeeklyScores` -- forced entries always appear, only filtered out if the nickname already has a real weekly score. They are cleared on `adminResetWeeklyLeaderboard` as before.
-- `adminInsertScore` (backend): When nickname is not registered, use `tournamentStart + 1_000_000_000` as the entry timestamp to guarantee it falls within the tournament window if the timestamp filter is ever re-added.
-- `handleInsertScore` (frontend): Capture the real error in `catch (e)` and store in `insertErrorMsg`, display it in the UI instead of the hardcoded string.
-- All other `catch {}` blocks in AdminPanel updated to capture real errors.
-- `(actor as any)` casts removed -- use properly typed `actor` calls directly.
+- `main.mo`: Add `principal: Principal` to `LeaderboardEntry` type; update `buildLeaderboard` to pass through principal from `ScoreEntry`
+- `backend.did.d.ts` and `backend.did.js`: Add `principal: Principal` to `LeaderboardEntry`
+- `backend.d.ts`: Add `principal: Principal` to `LeaderboardEntry`
+- `HomeScreen.tsx`: Add WALLET button (visible only when signed in, styled in brand colors)
+- `LeaderboardScreen.tsx`: Make nicknames clickable; show principal popup overlay on click
 
 ### Remove
-- Hardcoded "Nickname not found or failed." error message
+- Nothing removed
 
 ## Implementation Plan
-1. Update `main.mo`: remove timestamp filter from forced scores in `getWeeklyLeaderboard`; update `adminInsertScore` timestamp logic
-2. Update `LeaderboardScreen.tsx`: add `insertErrorMsg` state, capture real error in catch, display it
+1. Add `principal` to `LeaderboardEntry` in `main.mo` and all TS binding files
+2. Create `src/frontend/src/utils/icrc1.ts` with ICRC-1 actor factory, SHA-224 impl, and account ID derivation
+3. Create `WalletModal.tsx` component
+4. Update `HomeScreen.tsx` to add WALLET button
+5. Update `LeaderboardScreen.tsx` to add clickable nickname → principal popup
+6. Validate and deploy

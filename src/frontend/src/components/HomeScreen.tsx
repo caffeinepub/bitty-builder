@@ -12,6 +12,7 @@ import {
   useMyNickname,
 } from "../hooks/useQueries";
 import ChatPopup from "./ChatPopup";
+import WalletModal from "./WalletModal";
 
 interface Props {
   onPlay: () => void;
@@ -379,6 +380,7 @@ export default function HomeScreen({
   const [showChangeName, setShowChangeName] = useState(false);
   const [newName, setNewName] = useState("");
   const [showChat, setShowChat] = useState(false);
+  const [showWallet, setShowWallet] = useState(false);
 
   const { data: nameAvailable, isFetching: checkingName } = useCheckNickname(
     newName.trim().length >= 2 ? newName : "",
@@ -640,6 +642,24 @@ export default function HomeScreen({
           >
             💬 PLAYER CHAT
           </button>
+
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => setShowWallet(true)}
+              data-ocid="wallet.open_modal_button"
+              className="btn-arcade w-full py-3 text-base font-display font-black rounded-sm transition-all"
+              style={{
+                background: "transparent",
+                border: "2px solid #AAFF00",
+                color: "#AAFF00",
+                boxShadow:
+                  "0 0 20px rgba(170,255,0,0.25), 0 4px 0 rgba(0,0,0,0.5)",
+              }}
+            >
+              💰 WALLET
+            </button>
+          )}
 
           {/* How to Play */}
           <div
@@ -920,6 +940,7 @@ export default function HomeScreen({
       {/* Chat popup */}
       <AnimatePresence>
         {showChat && <ChatPopup onClose={() => setShowChat(false)} />}
+        {showWallet && <WalletModal onClose={() => setShowWallet(false)} />}
       </AnimatePresence>
     </div>
   );

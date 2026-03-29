@@ -53,6 +53,7 @@ actor {
     nickname : Text;
     score : Nat;
     timestamp : Int;
+    principal : Principal;
   };
 
   // Chat
@@ -463,6 +464,7 @@ actor {
           nickname = entry.nickname;
           score = entry.score;
           timestamp = entry.timestamp;
+          principal = entry.principal;
         };
       },
     );
