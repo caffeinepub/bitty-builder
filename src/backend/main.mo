@@ -151,21 +151,14 @@ actor {
     };
   };
 
-  // Tournament boundary -- stable so admin resets persist between sessions.
-  // DEPLOY_WEEKLY_RESET is updated each deployment; postupgrade forces a clean
-  // weekly slate on every publish (draft or production), eliminating ghost scores.
-  let DEPLOY_WEEKLY_RESET : Int = 1_774_821_976_000_000_000; // 2026-03-28T22:06:16Z
-  stable var tournamentStart : Int = DEPLOY_WEEKLY_RESET;
-  stable var tournamentNextReset : Int = 1_775_336_400_000_000_000; // Apr 4 2026 21:00 UTC
+  // Kept for upgrade compatibility -- was used by the now-removed postupgrade wipe.
+  // Do NOT remove this stable var or the canister upgrade will be rejected.
+  stable var DEPLOY_WEEKLY_RESET : Int = 1_774_821_976_000_000_000; // 2026-03-28T22:06:16Z
 
-  // Runs after every upgrade -- wipes weekly scores and resets tournament window.
-  system func postupgrade() {
-    tournamentStart := DEPLOY_WEEKLY_RESET;
-    let keys = weeklyPlayerScores.keys().toArray();
-    for (k in keys.vals()) {
-      weeklyPlayerScores.remove(k);
-    };
-  };
+  // Tournament boundary -- stable so admin resets and tournament windows persist across deploys.
+  // postupgrade has been intentionally removed so deployments never wipe weekly scores.
+  stable var tournamentStart : Int = 1_774_821_976_000_000_000; // 2026-03-28T22:06:16Z
+  stable var tournamentNextReset : Int = 1_775_336_400_000_000_000; // Apr 4 2026 21:00 UTC
 
   func getCurrentWeeklyPeriodStart(currentTime : Int) : Int {
     if (currentTime >= tournamentNextReset) {
@@ -287,6 +280,7 @@ actor {
     };
     let currentTime = Time.now();
     let currentPeriodStart = getCurrentWeeklyPeriodStart(currentTime);
+    // All-time: only update if new score is higher
     switch (playerScores.get(caller)) {
       case (?existing) {
         if (score > existing.score) {
@@ -307,6 +301,7 @@ actor {
         });
       };
     };
+    // Weekly: update if from a different period OR new score is higher in current period
     switch (weeklyPlayerScores.get(caller)) {
       case (?existing) {
         let existingPeriodStart = getCurrentWeeklyPeriodStart(existing.timestamp);
