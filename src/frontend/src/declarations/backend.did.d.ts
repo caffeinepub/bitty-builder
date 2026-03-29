@@ -12,6 +12,7 @@ export interface LeaderboardEntry {
   'score' : bigint,
   'timestamp' : bigint,
   'principal' : Principal,
+  'shareCount' : bigint,
 }
 export interface ScoreEntry {
   'principal' : Principal,
@@ -56,6 +57,7 @@ export interface _SERVICE {
   'adminSetTournamentStart' : ActorMethod<[string, bigint], undefined>,
   'adminInsertScore' : ActorMethod<[string, string, bigint], undefined>,
   'changeNickname' : ActorMethod<[string], undefined>,
+  'recordShare' : ActorMethod<[], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

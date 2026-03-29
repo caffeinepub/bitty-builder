@@ -21,6 +21,7 @@ export const LeaderboardEntry = IDL.Record({
   'score' : IDL.Nat,
   'timestamp' : IDL.Int,
   'principal' : IDL.Principal,
+  'shareCount' : IDL.Nat,
 });
 export const ChatMessage = IDL.Record({
   'id' : IDL.Nat,
@@ -69,6 +70,7 @@ export const idlService = IDL.Service({
   'adminSetTournamentStart' : IDL.Func([IDL.Text, IDL.Int], [], []),
   'adminInsertScore' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat], [], []),
   'changeNickname' : IDL.Func([IDL.Text], [], []),
+  'recordShare' : IDL.Func([], [], []),
 });
 
 export const idlInitArgs = [];
