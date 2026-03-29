@@ -90,6 +90,8 @@ export interface LeaderboardEntry {
     rank: bigint;
     score: bigint;
     timestamp: bigint;
+    principal: { toText: () => string };
+    shareCount: bigint;
 }
 export interface ScoreEntry {
     principal: Principal;
@@ -130,6 +132,7 @@ export interface backendInterface {
     registerNickname(nickname: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     submitScore(score: bigint): Promise<void>;
+    recordShare(): Promise<void>;
     getChatMessages(): Promise<Array<ChatMessage>>;
     sendChatMessage(text: string): Promise<void>;
     deleteOwnChatMessage(id: bigint): Promise<void>;
@@ -377,6 +380,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.submitScore(arg0);
+            return result;
+        }
+    }
+    async recordShare(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.recordShare();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.recordShare();
             return result;
         }
     }

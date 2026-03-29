@@ -27,7 +27,7 @@ export default function GameOverModal({
   onQuit,
 }: Props) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
-  const { isFetching: actorFetching } = useActor();
+  const { isFetching: actorFetching, actor } = useActor();
   const isAuthenticated = !!identity;
 
   const { data: existingNickname, isLoading: nicknameLoading } =
@@ -88,7 +88,21 @@ export default function GameOverModal({
 
   const nickStatus = getNicknameStatus();
 
-  const handleShareOnX = () => {
+  const handleShareOnX = async () => {
+    // Auto-submit score first if authenticated and has nickname
+    if (isAuthenticated && existingNickname && actor) {
+      try {
+        await submitMutation.mutateAsync(score);
+        if (!scoreSaved) setScoreSaved(true);
+      } catch (_e) {
+        // Score submission failed (e.g. not a new high score), that's ok
+      }
+      try {
+        await actor.recordShare();
+      } catch (_e) {
+        // Share tracking failed silently
+      }
+    }
     const text = `I just scored ${score.toLocaleString()} on Bitty Builder! Can you beat me? @bittyicp #BittyBuilder #ICP GAMES @ BITTYONICP.COM`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank", "noopener,noreferrer");

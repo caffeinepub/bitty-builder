@@ -54,6 +54,7 @@ actor {
     score : Nat;
     timestamp : Int;
     principal : Principal;
+    shareCount : Nat;
   };
 
   // Chat
@@ -80,9 +81,11 @@ actor {
   let playerScores = Map.empty<Principal, ScoreEntry>();
   let weeklyPlayerScores = Map.empty<Principal, ScoreEntry>();
 
+  // Share counts
+  let weeklyShareCounts = Map.empty<Principal, Nat>();
+  let allTimeShareCounts = Map.empty<Principal, Nat>();
+
   // Admin-forced weekly scores keyed by nickname
-  // These are ALWAYS shown in the weekly leaderboard regardless of timestamp.
-  // They are cleared on adminResetWeeklyLeaderboard and removed when the player submits their own score.
   let adminForcedWeeklyScores = Map.empty<Text, ScoreEntry>();
 
   // ── Stable backing storage ──────────────────────────────────────────────────
@@ -94,6 +97,8 @@ actor {
   stable var stableChatEntries           : [(Nat, ChatMessage)]       = [];
   stable var stableNextMessageId         : Nat                        = 0;
   stable var stableNextScoreId           : Nat                        = 0;
+  stable var stableWeeklyShareEntries    : [(Principal, Nat)]         = [];
+  stable var stableAllTimeShareEntries   : [(Principal, Nat)]         = [];
 
   system func preupgrade() {
     stableNicknameEntries        := nicknameMap.entries().toArray();
@@ -104,6 +109,8 @@ actor {
     stableChatEntries            := chatMessages.entries().toArray();
     stableNextMessageId          := nextMessageId;
     stableNextScoreId            := nextScoreId;
+    stableWeeklyShareEntries     := weeklyShareCounts.entries().toArray();
+    stableAllTimeShareEntries    := allTimeShareCounts.entries().toArray();
   };
 
   system func postupgrade() {
@@ -115,6 +122,8 @@ actor {
     for ((k, v) in stableChatEntries.vals())            { chatMessages.add(k, v) };
     nextMessageId := stableNextMessageId;
     nextScoreId   := stableNextScoreId;
+    for ((k, v) in stableWeeklyShareEntries.vals())     { weeklyShareCounts.add(k, v) };
+    for ((k, v) in stableAllTimeShareEntries.vals())    { allTimeShareCounts.add(k, v) };
   };
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -203,6 +212,23 @@ actor {
     chatMessages.remove(id);
   };
 
+  // Record a share to X (increments weekly and all-time counts)
+  public shared ({ caller }) func recordShare() : async () {
+    if (caller.isAnonymous()) {
+      return; // silently ignore anonymous shares
+    };
+    let currentWeekly = switch (weeklyShareCounts.get(caller)) {
+      case (null) { 0 };
+      case (?n) { n };
+    };
+    weeklyShareCounts.add(caller, currentWeekly + 1);
+    let currentAllTime = switch (allTimeShareCounts.get(caller)) {
+      case (null) { 0 };
+      case (?n) { n };
+    };
+    allTimeShareCounts.add(caller, currentAllTime + 1);
+  };
+
   // Admin: manually reset the weekly leaderboard
   public shared func adminResetWeeklyLeaderboard(password : Text) : async () {
     if (password != ADMIN_CHAT_PASSWORD) {
@@ -215,6 +241,11 @@ actor {
     let forcedKeys = adminForcedWeeklyScores.keys().toArray();
     for (k in forcedKeys.vals()) {
       adminForcedWeeklyScores.remove(k);
+    };
+    // Clear weekly share counts
+    let shareKeys = weeklyShareCounts.keys().toArray();
+    for (k in shareKeys.vals()) {
+      weeklyShareCounts.remove(k);
     };
     tournamentStart := Time.now();
   };
@@ -236,14 +267,11 @@ actor {
   };
 
   // Admin: insert a score by nickname.
-  // If the nickname is registered, the score goes into the regular weekly and all-time maps.
-  // If not registered, it goes into adminForcedWeeklyScores which is ALWAYS shown in the weekly leaderboard.
   public shared func adminInsertScore(password : Text, nickname : Text, score : Nat) : async () {
     if (password != ADMIN_CHAT_PASSWORD) {
       Runtime.trap("Wrong password");
     };
     let currentTime = Time.now();
-    // Use tournamentStart + 1s as timestamp so the entry is definitely within the tournament window
     let entryTimestamp = tournamentStart + 1_000_000_000;
     switch (reverseNicknameMap.get(nickname)) {
       case (?principal) {
@@ -266,7 +294,6 @@ actor {
         };
       };
       case (null) {
-        // Nickname not registered -- force into the always-visible forced scores map
         let entry : ScoreEntry = {
           principal = Principal.fromText("2vxsx-fae");
           nickname;
@@ -400,7 +427,6 @@ actor {
         });
       };
     };
-    // If this player had an admin-forced entry, remove it now that they have a real score
     adminForcedWeeklyScores.remove(nickname);
   };
 
@@ -414,15 +440,11 @@ actor {
       }
     ).toArray();
 
-    // Build a set of nicknames already covered by regular scores
     let coveredNicknames = Map.empty<Text, Bool>();
     for (entry in regularArr.vals()) {
       coveredNicknames.add(entry.nickname, true);
     };
 
-    // Admin-forced entries are ALWAYS included regardless of timestamp.
-    // They represent manually inserted scores that should always be visible
-    // until the next admin reset.
     let forcedArr = adminForcedWeeklyScores.values().filter(
       func(entry) {
         not coveredNicknames.containsKey(entry.nickname);
@@ -435,12 +457,12 @@ actor {
       if (i < n1) { regularArr[i] } else { forcedArr[i - n1] };
     });
 
-    buildLeaderboard(combined.vals());
+    buildLeaderboardWithShares(combined.vals(), weeklyShareCounts);
   };
 
   public query ({ caller }) func getAllTimeLeaderboard() : async [LeaderboardEntry] {
     let allScores = playerScores.values();
-    buildLeaderboard(allScores);
+    buildLeaderboardWithShares(allScores, allTimeShareCounts);
   };
 
   func getCurrentWeekStart(timestamp : Int) : Int {
@@ -452,6 +474,10 @@ actor {
   };
 
   func buildLeaderboard(scores : Iter.Iter<ScoreEntry>) : [LeaderboardEntry] {
+    buildLeaderboardWithShares(scores, Map.empty<Principal, Nat>());
+  };
+
+  func buildLeaderboardWithShares(scores : Iter.Iter<ScoreEntry>, shareCounts : Map.Map<Principal, Nat>) : [LeaderboardEntry] {
     let sortedScores = scores.sort();
     let arrayOfScores = sortedScores.toArray();
     let topEntries = arrayOfScores.sliceToArray(0, Int.abs(Nat.min(50, arrayOfScores.size())));
@@ -459,12 +485,17 @@ actor {
       topEntries.size(),
       func(i) {
         let entry = topEntries[i];
+        let sc = switch (shareCounts.get(entry.principal)) {
+          case (null) { 0 };
+          case (?n) { n };
+        };
         {
           rank = i + 1;
           nickname = entry.nickname;
           score = entry.score;
           timestamp = entry.timestamp;
           principal = entry.principal;
+          shareCount = sc;
         };
       },
     );

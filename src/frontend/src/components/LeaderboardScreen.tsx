@@ -105,6 +105,9 @@ function LeaderboardTable({
             <TableHead className="font-mono text-xs text-muted-foreground text-right">
               Score
             </TableHead>
+            <TableHead className="font-mono text-xs text-muted-foreground text-right">
+              🐦 Shared
+            </TableHead>
             <TableHead className="font-mono text-xs text-muted-foreground text-right hidden sm:table-cell">
               Date
             </TableHead>
@@ -159,6 +162,19 @@ function LeaderboardTable({
                   style={{ color: "#AAFF00" }}
                 >
                   {formatScore(entry.score)}
+                </span>
+              </TableCell>
+              <TableCell className="py-2 text-right">
+                <span
+                  className="font-mono text-xs"
+                  style={{
+                    color:
+                      entry.shareCount && Number(entry.shareCount) > 0
+                        ? "#FF69B4"
+                        : "inherit",
+                  }}
+                >
+                  {entry.shareCount ? Number(entry.shareCount) : 0}
                 </span>
               </TableCell>
               <TableCell className="py-2 text-right hidden sm:table-cell">

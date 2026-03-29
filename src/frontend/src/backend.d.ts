@@ -13,6 +13,7 @@ export interface LeaderboardEntry {
     score: bigint;
     timestamp: bigint;
     principal: Principal;
+    shareCount: bigint;
 }
 export interface ScoreEntry {
     principal: Principal;
@@ -52,6 +53,7 @@ export interface backendInterface {
     registerNickname(nickname: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     submitScore(score: bigint): Promise<void>;
+    recordShare(): Promise<void>;
     getChatMessages(): Promise<Array<ChatMessage>>;
     sendChatMessage(text: string): Promise<void>;
     deleteOwnChatMessage(id: bigint): Promise<void>;

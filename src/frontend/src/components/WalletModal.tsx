@@ -36,8 +36,6 @@ export default function WalletModal({ onClose }: Props) {
 
   const [copiedPrincipal, setCopiedPrincipal] = useState(false);
   const [copiedAccount, setCopiedAccount] = useState(false);
-  const [copiedReceivePrincipal, setCopiedReceivePrincipal] = useState(false);
-  const [copiedReceiveAccount, setCopiedReceiveAccount] = useState(false);
 
   const fetchBalances = useCallback(async () => {
     if (!principal) return;
@@ -336,42 +334,6 @@ export default function WalletModal({ onClose }: Props) {
               >
                 {sending ? "Sending..." : `Send $${sendToken}`}
               </button>
-            </div>
-          </section>
-
-          {/* Receive */}
-          <section>
-            <p
-              className="text-xs tracking-widest uppercase font-bold mb-2"
-              style={{ color: "#FF00AA" }}
-            >
-              Receive
-            </p>
-            <p
-              className="text-xs mb-2"
-              style={{ color: "rgba(255,255,255,0.5)" }}
-            >
-              Share your address to receive tokens
-            </p>
-            <div className="space-y-2">
-              <InfoBox
-                label="PRINCIPAL ID"
-                value={principalText}
-                copied={copiedReceivePrincipal}
-                onCopy={() =>
-                  handleCopy(principalText, setCopiedReceivePrincipal)
-                }
-                ocid="wallet.receive_principal.button"
-                color="#00DDFF"
-              />
-              <InfoBox
-                label="ACCOUNT ID (LEGACY)"
-                value={accountId}
-                copied={copiedReceiveAccount}
-                onCopy={() => handleCopy(accountId, setCopiedReceiveAccount)}
-                ocid="wallet.receive_account.button"
-                color="#AAFF00"
-              />
             </div>
           </section>
         </div>
