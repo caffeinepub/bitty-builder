@@ -272,6 +272,13 @@ function AdminPanel({
   >("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Insert score state
+  const [insertNickname, setInsertNickname] = useState("");
+  const [insertScore, setInsertScore] = useState("");
+  const [insertStatus, setInsertStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+
   const handleReset = async () => {
     if (!actor) return;
     onInteraction();
@@ -301,6 +308,25 @@ function AdminPanel({
     }
   };
 
+  const handleInsertScore = async () => {
+    if (!actor || !insertNickname.trim() || !insertScore) return;
+    onInteraction();
+    setInsertStatus("loading");
+    try {
+      await (actor as any).adminInsertScore(
+        "bittybittywhatwhat",
+        insertNickname.trim(),
+        BigInt(Math.floor(Number(insertScore))),
+      );
+      setInsertStatus("success");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      weeklyRefetch();
+      setInsertStatus("idle");
+    } catch {
+      setInsertStatus("error");
+    }
+  };
+
   return (
     <dialog
       open
@@ -315,7 +341,7 @@ function AdminPanel({
         exit={{ opacity: 0, y: 30 }}
         transition={{ type: "spring", stiffness: 280, damping: 24 }}
         onClick={onInteraction}
-        className="w-full max-w-sm mx-4 rounded-sm p-5 flex flex-col gap-5"
+        className="w-full max-w-sm mx-4 rounded-sm p-5 flex flex-col gap-5 overflow-y-auto max-h-[90vh]"
         style={{
           background: "#0a0a1a",
           border: "2px solid #00DDFF",
@@ -452,6 +478,94 @@ function AdminPanel({
               style={{ color: "#FF0050" }}
             >
               ✗ {errorMsg || "Failed to update. Try again."}
+            </p>
+          )}
+        </div>
+
+        {/* Section 3: Insert score by nickname */}
+        <div
+          className="rounded-sm p-4 flex flex-col gap-3"
+          style={{
+            background: "rgba(255,0,170,0.05)",
+            border: "1px solid rgba(255,0,170,0.3)",
+          }}
+        >
+          <p
+            className="font-display font-black text-sm"
+            style={{ color: "#FF00AA" }}
+          >
+            INSERT SCORE BY NICKNAME
+          </p>
+          <p className="font-mono text-xs" style={{ color: "#888" }}>
+            Manually add a score for an existing player nickname.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={insertNickname}
+              onChange={(e) => {
+                setInsertNickname(e.target.value);
+                setInsertStatus("idle");
+                onInteraction();
+              }}
+              placeholder="Nickname e.g. dolby"
+              data-ocid="admin.input"
+              className="flex-1 px-3 py-2 rounded-sm font-mono text-sm bg-transparent outline-none"
+              style={{
+                border: "1px solid #FF00AA",
+                color: "#fff",
+              }}
+            />
+            <input
+              type="number"
+              value={insertScore}
+              onChange={(e) => {
+                setInsertScore(e.target.value);
+                setInsertStatus("idle");
+                onInteraction();
+              }}
+              placeholder="Score e.g. 40600"
+              data-ocid="admin.input"
+              className="flex-1 px-3 py-2 rounded-sm font-mono text-sm bg-transparent outline-none"
+              style={{
+                border: "1px solid #FF00AA",
+                color: "#fff",
+              }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleInsertScore}
+            disabled={
+              insertStatus === "loading" ||
+              !insertNickname.trim() ||
+              !insertScore
+            }
+            data-ocid="admin.save_button"
+            className="w-full py-2.5 font-display font-black text-sm rounded-sm transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{
+              background: "linear-gradient(135deg, #AAFF00, #00DDFF)",
+              color: "#06060f",
+            }}
+          >
+            {insertStatus === "loading" ? "INSERTING..." : "INSERT SCORE"}
+          </button>
+          {insertStatus === "success" && (
+            <p
+              className="font-mono text-xs text-center"
+              style={{ color: "#AAFF00" }}
+              data-ocid="admin.success_state"
+            >
+              ✓ Score inserted!
+            </p>
+          )}
+          {insertStatus === "error" && (
+            <p
+              className="font-mono text-xs text-center"
+              style={{ color: "#FF0050" }}
+              data-ocid="admin.error_state"
+            >
+              ✗ Nickname not found or failed.
             </p>
           )}
         </div>

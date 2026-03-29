@@ -199,6 +199,37 @@ actor {
     tournamentStart := newTimestampNs;
   };
 
+  // Admin: manually insert a score for a player by nickname (force-insert, bypasses period check)
+  public shared func adminInsertScore(password : Text, nickname : Text, score : Nat) : async () {
+    if (password != ADMIN_CHAT_PASSWORD) {
+      Runtime.trap("Wrong password");
+    };
+    let principal = switch (reverseNicknameMap.get(nickname)) {
+      case (null) { Runtime.trap("Nickname not found") };
+      case (?p) { p };
+    };
+    let currentTime = Time.now();
+    let entry : ScoreEntry = {
+      principal;
+      nickname;
+      score;
+      timestamp = currentTime;
+    };
+    // Always overwrite weekly entry for this player
+    weeklyPlayerScores.add(principal, entry);
+    // All-time: only overwrite if this score is higher
+    switch (playerScores.get(principal)) {
+      case (?existing) {
+        if (score > existing.score) {
+          playerScores.add(principal, entry);
+        };
+      };
+      case (null) {
+        playerScores.add(principal, entry);
+      };
+    };
+  };
+
   public shared ({ caller }) func registerNickname(nickname : Text) : async () {
     if (caller.isAnonymous()) {
       Runtime.trap("Must be signed in to register a nickname");

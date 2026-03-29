@@ -57,4 +57,6 @@ export interface backendInterface {
     adminDeleteChatMessage(id: bigint, password: string): Promise<void>;
     adminResetWeeklyLeaderboard(password: string): Promise<void>;
     adminSetWeeklyResetTime(password: string, timestampNs: bigint): Promise<void>;
+    adminSetTournamentStart(password: string, timestampNs: bigint): Promise<void>;
+    adminInsertScore(password: string, nickname: string, score: bigint): Promise<void>;
 }
