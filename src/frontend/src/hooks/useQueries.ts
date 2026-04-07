@@ -1,5 +1,6 @@
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { DuelChallenge } from "../types/duel";
 import { useActor } from "./useActor";
 
 export function useAllTimeLeaderboard() {
@@ -110,5 +111,100 @@ export function useMyBestScore(principal: Principal | undefined) {
     },
     enabled: !!actor && !isFetching && !!principal,
     staleTime: 60_000,
+  });
+}
+
+// ── Duel hooks ──────────────────────────────────────────────────────────────
+
+export function useOpenDuels() {
+  const { actor, isFetching } = useActor();
+  return useQuery<DuelChallenge[]>({
+    queryKey: ["duels", "open"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getOpenDuels();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  });
+}
+
+export function useMyDuels() {
+  const { actor, isFetching } = useActor();
+  return useQuery<DuelChallenge[]>({
+    queryKey: ["duels", "mine"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getMyDuels();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 0,
+    refetchInterval: 15_000,
+  });
+}
+
+export function useDuelHistory() {
+  const { actor, isFetching } = useActor();
+  return useQuery<DuelChallenge[]>({
+    queryKey: ["duels", "history"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getDuelHistory();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30_000,
+  });
+}
+
+export function usePostDuelChallenge() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (amount: bigint) => {
+      if (!actor) throw new Error("Not signed in");
+      const result = await actor.postDuelChallenge(amount);
+      if ("err" in result) throw new Error(result.err);
+      return result;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["duels"] });
+    },
+  });
+}
+
+export function useAcceptDuelChallenge() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (duelId: string) => {
+      if (!actor) throw new Error("Not signed in");
+      const result = await actor.acceptDuelChallenge(duelId);
+      if ("err" in result) throw new Error(result.err);
+      return result;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["duels"] });
+    },
+  });
+}
+
+export function usePlayDuel() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      duelId,
+      score,
+    }: { duelId: string; score: number }) => {
+      if (!actor) throw new Error("Not signed in");
+      const result = await actor.playDuel(duelId, BigInt(score));
+      if ("err" in result) throw new Error(result.err);
+      return result;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["duels"] });
+      void queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+    },
   });
 }

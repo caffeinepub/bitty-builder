@@ -36,12 +36,38 @@ function icrc1IdlFactory({ IDL: _IDL }: { IDL: typeof IDL }) {
     Ok: _IDL.Nat,
     Err: TransferError,
   });
+  const ApproveArg = _IDL.Record({
+    from_subaccount: _IDL.Opt(_IDL.Vec(_IDL.Nat8)),
+    spender: Account,
+    amount: _IDL.Nat,
+    expected_allowance: _IDL.Opt(_IDL.Nat),
+    expires_at: _IDL.Opt(_IDL.Nat64),
+    fee: _IDL.Opt(_IDL.Nat),
+    memo: _IDL.Opt(_IDL.Vec(_IDL.Nat8)),
+    created_at_time: _IDL.Opt(_IDL.Nat64),
+  });
+  const ApproveError = _IDL.Variant({
+    BadFee: _IDL.Record({ expected_fee: _IDL.Nat }),
+    InsufficientFunds: _IDL.Record({ balance: _IDL.Nat }),
+    AllowanceChanged: _IDL.Record({ current_allowance: _IDL.Nat }),
+    Expired: _IDL.Record({ ledger_time: _IDL.Nat64 }),
+    TooOld: _IDL.Null,
+    CreatedInFuture: _IDL.Record({ ledger_time: _IDL.Nat64 }),
+    Duplicate: _IDL.Record({ duplicate_of: _IDL.Nat }),
+    TemporarilyUnavailable: _IDL.Null,
+    GenericError: _IDL.Record({ error_code: _IDL.Nat, message: _IDL.Text }),
+  });
+  const ApproveResult = _IDL.Variant({
+    Ok: _IDL.Nat,
+    Err: ApproveError,
+  });
   return _IDL.Service({
     icrc1_balance_of: _IDL.Func([Account], [_IDL.Nat], ["query"]),
     icrc1_transfer: _IDL.Func([TransferArg], [TransferResult], []),
     icrc1_decimals: _IDL.Func([], [_IDL.Nat8], ["query"]),
     icrc1_fee: _IDL.Func([], [_IDL.Nat], ["query"]),
     icrc1_symbol: _IDL.Func([], [_IDL.Text], ["query"]),
+    icrc2_approve: _IDL.Func([ApproveArg], [ApproveResult], []),
   });
 }
 
@@ -59,6 +85,17 @@ export interface Icrc1TransferArg {
   amount: bigint;
 }
 
+export interface Icrc2ApproveArg {
+  from_subaccount: [] | [Uint8Array];
+  spender: Icrc1Account;
+  amount: bigint;
+  expected_allowance: [] | [bigint];
+  expires_at: [] | [bigint];
+  fee: [] | [bigint];
+  memo: [] | [Uint8Array];
+  created_at_time: [] | [bigint];
+}
+
 export interface Icrc1Actor {
   icrc1_balance_of(account: Icrc1Account): Promise<bigint>;
   icrc1_transfer(
@@ -67,6 +104,9 @@ export interface Icrc1Actor {
   icrc1_decimals(): Promise<number>;
   icrc1_fee(): Promise<bigint>;
   icrc1_symbol(): Promise<string>;
+  icrc2_approve(
+    args: Icrc2ApproveArg,
+  ): Promise<{ Ok: bigint } | { Err: Record<string, unknown> }>;
 }
 
 export function createIcrc1Actor(
@@ -79,6 +119,48 @@ export function createIcrc1Actor(
     agent,
     canisterId,
   }) as unknown as Icrc1Actor;
+}
+
+/**
+ * Approve the backend canister as a spender for BITTYICP tokens.
+ * This must be called before postDuelChallenge or acceptDuelChallenge.
+ * @param backendCanisterId - The backend canister principal (spender)
+ * @param amount - Amount of BITTYICP tokens to approve (in raw bigint with 8 decimals)
+ * @param identity - The signed-in user's identity
+ */
+export async function approveIcrc2ForDuel(
+  backendCanisterId: string,
+  amount: bigint,
+  identity: Identity,
+): Promise<{ ok: true } | { err: string }> {
+  try {
+    const actor = createIcrc1Actor(BITTYICP_CANISTER_ID, identity);
+    // Get the fee first
+    const fee = await actor.icrc1_fee();
+    // Approve amount + fee buffer
+    const approveAmount = amount + fee;
+
+    const { Principal } = await import("@icp-sdk/core/principal");
+    const spenderPrincipal = Principal.fromText(backendCanisterId);
+
+    const result = await actor.icrc2_approve({
+      from_subaccount: [],
+      spender: { owner: spenderPrincipal, subaccount: [] },
+      amount: approveAmount,
+      expected_allowance: [],
+      expires_at: [],
+      fee: [],
+      memo: [],
+      created_at_time: [],
+    });
+
+    if ("Ok" in result) return { ok: true };
+    const errVariant = result.Err as Record<string, unknown>;
+    const errKey = Object.keys(errVariant)[0] ?? "Unknown";
+    return { err: `Approve failed: ${errKey}` };
+  } catch (e) {
+    return { err: e instanceof Error ? e.message : "Approve failed" };
+  }
 }
 
 // SHA-224 implementation for ICP Account ID derivation

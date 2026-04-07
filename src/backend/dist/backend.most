@@ -1,0 +1,141 @@
+// Version: 1.0.0
+type ChatMessage__1037536196 =
+  {
+    author : Principal;
+    id : Nat;
+    nickname : Text;
+    text : Text;
+    timestamp : Int
+  };
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type DuelChallenge__411041062 =
+  {
+    amount : Nat;
+    challenger : Principal;
+    challengerNickname : Text;
+    challengerScore : ?Nat;
+    createdAt : Int;
+    expiresAt : Int;
+    id : Text;
+    matchedAt : ?Int;
+    opponent : ?Principal;
+    opponentNickname : ?Text;
+    opponentScore : ?Nat;
+    state : DuelState__151727250;
+    winnerId : ?Principal
+  };
+type DuelState__151727250 =
+  {
+    #challenger_played;
+    #expired;
+    #matched;
+    #open;
+    #opponent_played;
+    #resolved
+  };
+type ICRC1Account__381749020 = {owner : Principal; subaccount : ?Blob};
+type ICRC2Args__372027968 =
+  {
+    amount : Nat;
+    created_at_time : ?Nat64;
+    fee : ?Nat;
+    from : ICRC1Account__381749020;
+    memo : ?Blob;
+    spender_subaccount : ?Blob;
+    to : ICRC1Account__381749020
+  };
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type ScoreEntry__674286185 =
+  {nickname : Text; principal : Principal; score : Nat; timestamp : Int};
+type TransferArgs__339487394 =
+  {
+    amount : Nat;
+    created_at_time : ?Nat64;
+    fee : ?Nat;
+    from_subaccount : ?Blob;
+    memo : ?Blob;
+    to : ICRC1Account__381749020
+  };
+type TransferResult__160469895 = {#Err : Text; #Ok : Nat};
+actor {
+  stable ADMIN_CHAT_PASSWORD : Text;
+  stable var DEPLOY_WEEKLY_RESET : Int;
+  stable MAX_CHAT_MESSAGES : Nat;
+  stable activeDuelAmounts :
+    {var root : Node__46230540<Text, Bool>; var size : Nat__490723111};
+  stable adminForcedWeeklyScores :
+    {
+      var root : Node__46230540<Text, ScoreEntry__674286185>;
+      var size : Nat__490723111
+    };
+  stable allTimeShareCounts :
+    {var root : Node__46230540<Principal, Nat>; var size : Nat__490723111};
+  stable bankPrincipal : Principal;
+  stable bittyToken :
+    actor {
+      icrc1_transfer :
+        shared TransferArgs__339487394 -> async TransferResult__160469895;
+      icrc2_transfer_from :
+        shared ICRC2Args__372027968 -> async TransferResult__160469895
+    };
+  stable chatMessages :
+    {
+      var root : Node__46230540<Nat, ChatMessage__1037536196>;
+      var size : Nat__490723111
+    };
+  stable duelHistory :
+    {
+      var root : Node__46230540<Text, DuelChallenge__411041062>;
+      var size : Nat__490723111
+    };
+  stable duels :
+    {
+      var root : Node__46230540<Text, DuelChallenge__411041062>;
+      var size : Nat__490723111
+    };
+  stable var nextMessageId : Nat;
+  stable var nextScoreId : Nat;
+  stable nicknameMap :
+    {var root : Node__46230540<Principal, Text>; var size : Nat__490723111};
+  stable playerScores :
+    {
+      var root : Node__46230540<Principal, ScoreEntry__674286185>;
+      var size : Nat__490723111
+    };
+  stable reverseNicknameMap :
+    {var root : Node__46230540<Text, Principal>; var size : Nat__490723111};
+  stable scoreEntries :
+    {
+      var root : Node__46230540<Nat, ScoreEntry__674286185>;
+      var size : Nat__490723111
+    };
+  stable var stableAllTimeShareEntries : [(Principal, Nat)];
+  stable var stableChatEntries : [(Nat, ChatMessage__1037536196)];
+  stable var stableDuelEntries : [(Text, DuelChallenge__411041062)];
+  stable var stableDuelHistoryEntries : [(Text, DuelChallenge__411041062)];
+  stable var stableForcedScoreEntries : [(Text, ScoreEntry__674286185)];
+  stable var stableNextMessageId : Nat;
+  stable var stableNextScoreId : Nat;
+  stable var stableNicknameEntries : [(Principal, Text)];
+  stable var stablePlayerScoreEntries : [(Principal, ScoreEntry__674286185)];
+  stable var stableReverseNicknameEntries : [(Text, Principal)];
+  stable var stableUserActiveDuelAmounts : [(Text, Bool)];
+  stable var stableWeeklyScoreEntries : [(Principal, ScoreEntry__674286185)];
+  stable var stableWeeklyShareEntries : [(Principal, Nat)];
+  stable var tournamentNextReset : Int;
+  stable var tournamentStart : Int;
+  stable weeklyPlayerScores :
+    {
+      var root : Node__46230540<Principal, ScoreEntry__674286185>;
+      var size : Nat__490723111
+    };
+  stable weeklyShareCounts :
+    {var root : Node__46230540<Principal, Nat>; var size : Nat__490723111}
+};

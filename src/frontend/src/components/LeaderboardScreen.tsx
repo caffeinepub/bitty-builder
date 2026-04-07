@@ -10,12 +10,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { LeaderboardEntry } from "../backend";
 import { useActor } from "../hooks/useActor";
 import {
   useAllTimeLeaderboard,
   useWeeklyLeaderboard,
 } from "../hooks/useQueries";
+import type { LeaderboardEntry } from "../types/duel";
 
 interface Props {
   onPlay: () => void;

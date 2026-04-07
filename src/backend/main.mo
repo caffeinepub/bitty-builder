@@ -8,37 +8,12 @@ import Int "mo:core/Int";
 import Order "mo:core/Order";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
-import MixinAuthorization "authorization/MixinAuthorization";
-import AccessControl "authorization/access-control";
 
-actor {
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
+import DuelTypes "types/duels";
+import DuelsApiMixin "mixins/duels-api";
 
-  // User Profile Type
-  public type UserProfile = {
-    name : Text;
-  };
 
-  let userProfiles = Map.empty<Principal, UserProfile>();
-
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    userProfiles.get(caller);
-  };
-
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
-    userProfiles.get(user);
-  };
-
-  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (caller.isAnonymous()) {
-      Runtime.trap("Must be signed in to save profile");
-    };
-    userProfiles.add(caller, profile);
-  };
+actor self {
 
   // Data Structures
   type ScoreEntry = {
@@ -88,17 +63,27 @@ actor {
   // Admin-forced weekly scores keyed by nickname
   let adminForcedWeeklyScores = Map.empty<Text, ScoreEntry>();
 
+  // ── Duels state ──────────────────────────────────────────────────────────
+  let duels             = Map.empty<Text, DuelTypes.DuelChallenge>();
+  let duelHistory       = Map.empty<Text, DuelTypes.DuelChallenge>();
+  let activeDuelAmounts = Map.empty<Text, Bool>();
+
+  include DuelsApiMixin(duels, duelHistory, activeDuelAmounts, nicknameMap, Principal.fromActor(self));
+
   // ── Stable backing storage ──────────────────────────────────────────────────
-  stable var stableNicknameEntries       : [(Principal, Text)]        = [];
-  stable var stableReverseNicknameEntries: [(Text, Principal)]        = [];
-  stable var stablePlayerScoreEntries    : [(Principal, ScoreEntry)]  = [];
-  stable var stableWeeklyScoreEntries    : [(Principal, ScoreEntry)]  = [];
-  stable var stableForcedScoreEntries    : [(Text, ScoreEntry)]       = [];
-  stable var stableChatEntries           : [(Nat, ChatMessage)]       = [];
-  stable var stableNextMessageId         : Nat                        = 0;
-  stable var stableNextScoreId           : Nat                        = 0;
-  stable var stableWeeklyShareEntries    : [(Principal, Nat)]         = [];
-  stable var stableAllTimeShareEntries   : [(Principal, Nat)]         = [];
+  stable var stableNicknameEntries       : [(Principal, Text)]                          = [];
+  stable var stableReverseNicknameEntries: [(Text, Principal)]                          = [];
+  stable var stablePlayerScoreEntries    : [(Principal, ScoreEntry)]                    = [];
+  stable var stableWeeklyScoreEntries    : [(Principal, ScoreEntry)]                    = [];
+  stable var stableForcedScoreEntries    : [(Text, ScoreEntry)]                         = [];
+  stable var stableChatEntries           : [(Nat, ChatMessage)]                         = [];
+  stable var stableNextMessageId         : Nat                                          = 0;
+  stable var stableNextScoreId           : Nat                                          = 0;
+  stable var stableWeeklyShareEntries    : [(Principal, Nat)]                           = [];
+  stable var stableAllTimeShareEntries   : [(Principal, Nat)]                           = [];
+  stable var stableDuelEntries           : [(Text, DuelTypes.DuelChallenge)]            = [];
+  stable var stableDuelHistoryEntries    : [(Text, DuelTypes.DuelChallenge)]            = [];
+  stable var stableUserActiveDuelAmounts : [(Text, Bool)]                               = [];
 
   system func preupgrade() {
     stableNicknameEntries        := nicknameMap.entries().toArray();
@@ -111,6 +96,9 @@ actor {
     stableNextScoreId            := nextScoreId;
     stableWeeklyShareEntries     := weeklyShareCounts.entries().toArray();
     stableAllTimeShareEntries    := allTimeShareCounts.entries().toArray();
+    stableDuelEntries            := duels.entries().toArray();
+    stableDuelHistoryEntries     := duelHistory.entries().toArray();
+    stableUserActiveDuelAmounts  := activeDuelAmounts.entries().toArray();
   };
 
   system func postupgrade() {
@@ -124,6 +112,9 @@ actor {
     nextScoreId   := stableNextScoreId;
     for ((k, v) in stableWeeklyShareEntries.vals())     { weeklyShareCounts.add(k, v) };
     for ((k, v) in stableAllTimeShareEntries.vals())    { allTimeShareCounts.add(k, v) };
+    for ((k, v) in stableDuelEntries.vals())            { duels.add(k, v) };
+    for ((k, v) in stableDuelHistoryEntries.vals())     { duelHistory.add(k, v) };
+    for ((k, v) in stableUserActiveDuelAmounts.vals())  { activeDuelAmounts.add(k, v) };
   };
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -309,12 +300,28 @@ actor {
     if (caller.isAnonymous()) {
       Runtime.trap("Must be signed in to register a nickname");
     };
-    if (nicknameMap.containsKey(caller)) {
-      Runtime.trap("Nickname already registered for caller");
+    // Check if caller already has a different nickname registered
+    switch (nicknameMap.get(caller)) {
+      case (?existing) {
+        if (existing != nickname) {
+          Runtime.trap("Nickname already registered for caller");
+        };
+        // Same nickname already registered -- idempotent, just return
+        return;
+      };
+      case (null) {};
     };
+    // Check if the nickname is taken by someone else
     switch (reverseNicknameMap.get(nickname)) {
       case (null) {};
-      case (?_) { Runtime.trap("Nickname already taken") };
+      case (?owner) {
+        if (owner != caller) {
+          Runtime.trap("Nickname already taken");
+        };
+        // Owner is caller but nicknameMap was missing the entry -- self-heal
+        nicknameMap.add(caller, nickname);
+        return;
+      };
     };
     nicknameMap.add(caller, nickname);
     reverseNicknameMap.add(nickname, caller);
@@ -480,7 +487,7 @@ actor {
   func buildLeaderboardWithShares(scores : Iter.Iter<ScoreEntry>, shareCounts : Map.Map<Principal, Nat>) : [LeaderboardEntry] {
     let sortedScores = scores.sort();
     let arrayOfScores = sortedScores.toArray();
-    let topEntries = arrayOfScores.sliceToArray(0, Int.abs(Nat.min(50, arrayOfScores.size())));
+    let topEntries = arrayOfScores.sliceToArray(0, Int.abs(Nat.min(200, arrayOfScores.size())));
     Array.tabulate(
       topEntries.size(),
       func(i) {
@@ -502,27 +509,34 @@ actor {
   };
 
   public query ({ caller }) func getAllScores() : async [ScoreEntry] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view all scores");
-    };
     playerScores.values().toArray();
   };
 
   public query ({ caller }) func getTopScores() : async [ScoreEntry] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view top scores");
-    };
     let allScores = playerScores.values().toArray();
     allScores.sliceToArray(0, 10);
   };
 
   public query ({ caller }) func getTopScoresForUser(user : Principal) : async [ScoreEntry] {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own scores");
-    };
     switch (playerScores.get(user)) {
       case (null) { [] };
       case (?entry) { [entry] };
     };
+  };
+
+  // ICRC-1 inter-canister calls for wallet balances
+  type ICRC1WalletAccount = { owner : Principal; subaccount : ?Blob };
+  type ICRC1Token = actor {
+    icrc1_balance_of : (ICRC1Account) -> async Nat;
+  };
+
+  public func getIcpBalance(owner : Principal) : async Nat {
+    let token : ICRC1Token = actor("ryjl3-tyaaa-aaaaa-aaaba-cai");
+    await token.icrc1_balance_of(({ owner; subaccount = null } : ICRC1WalletAccount));
+  };
+
+  public func getBittyBalance(owner : Principal) : async Nat {
+    let token : ICRC1Token = actor("qroj6-lyaaa-aaaam-qeqta-cai");
+    await token.icrc1_balance_of(({ owner; subaccount = null } : ICRC1WalletAccount));
   };
 };

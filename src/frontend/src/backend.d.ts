@@ -8,12 +8,34 @@ export interface None {
 }
 export type Option<T> = Some<T> | None;
 export interface LeaderboardEntry {
+    principal: Principal;
     nickname: string;
     rank: bigint;
     score: bigint;
-    timestamp: bigint;
-    principal: Principal;
     shareCount: bigint;
+    timestamp: bigint;
+}
+export interface ChatMessage {
+    id: bigint;
+    nickname: string;
+    text: string;
+    author: Principal;
+    timestamp: bigint;
+}
+export interface DuelResult {
+    id: string;
+    matchedAt?: bigint;
+    expiresAt: bigint;
+    challengerNickname: string;
+    winnerId?: Principal;
+    opponentNickname?: string;
+    opponentScore?: bigint;
+    createdAt: bigint;
+    state: DuelState;
+    challengerScore?: bigint;
+    amount: bigint;
+    challenger: Principal;
+    opponent?: Principal;
 }
 export interface ScoreEntry {
     principal: Principal;
@@ -21,45 +43,59 @@ export interface ScoreEntry {
     score: bigint;
     timestamp: bigint;
 }
-export interface ChatMessage {
-    id: bigint;
-    author: Principal;
-    nickname: string;
-    text: string;
-    timestamp: bigint;
-}
-export interface UserProfile {
-    name: string;
-}
-export enum UserRole {
-    admin = "admin",
-    user = "user",
-    guest = "guest"
+export enum DuelState {
+    resolved = "resolved",
+    expired = "expired",
+    opponent_played = "opponent_played",
+    open = "open",
+    matched = "matched",
+    challenger_played = "challenger_played"
 }
 export interface backendInterface {
-    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    acceptDuelChallenge(duelId: string): Promise<{
+        __kind__: "ok";
+        ok: string;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    adminDeleteChatMessage(id: bigint, password: string): Promise<void>;
+    adminInsertScore(password: string, nickname: string, score: bigint): Promise<void>;
+    adminResetWeeklyLeaderboard(password: string): Promise<void>;
+    adminSetTournamentStart(password: string, newTimestampNs: bigint): Promise<void>;
+    adminSetWeeklyResetTime(password: string, newTimestampNs: bigint): Promise<void>;
     changeNickname(newNickname: string): Promise<void>;
+    deleteOwnChatMessage(id: bigint): Promise<void>;
+    expireOldDuels(): Promise<void>;
     getAllScores(): Promise<Array<ScoreEntry>>;
     getAllTimeLeaderboard(): Promise<Array<LeaderboardEntry>>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
-    getCallerUserRole(): Promise<UserRole>;
+    getBittyBalance(owner: Principal): Promise<bigint>;
+    getChatMessages(): Promise<Array<ChatMessage>>;
+    getDuelHistory(): Promise<Array<DuelResult>>;
+    getIcpBalance(owner: Principal): Promise<bigint>;
+    getMyDuels(): Promise<Array<DuelResult>>;
     getMyNickname(): Promise<string | null>;
+    getOpenDuels(): Promise<Array<DuelResult>>;
     getTopScores(): Promise<Array<ScoreEntry>>;
     getTopScoresForUser(user: Principal): Promise<Array<ScoreEntry>>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
     getWeeklyLeaderboard(): Promise<Array<LeaderboardEntry>>;
-    isCallerAdmin(): Promise<boolean>;
     isNicknameAvailable(nickname: string): Promise<boolean>;
-    registerNickname(nickname: string): Promise<void>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    submitScore(score: bigint): Promise<void>;
+    playDuel(duelId: string, score: bigint): Promise<{
+        __kind__: "ok";
+        ok: string;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    postDuelChallenge(amount: bigint): Promise<{
+        __kind__: "ok";
+        ok: string;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     recordShare(): Promise<void>;
-    getChatMessages(): Promise<Array<ChatMessage>>;
+    registerNickname(nickname: string): Promise<void>;
     sendChatMessage(text: string): Promise<void>;
-    deleteOwnChatMessage(id: bigint): Promise<void>;
-    adminDeleteChatMessage(id: bigint, password: string): Promise<void>;
-    adminResetWeeklyLeaderboard(password: string): Promise<void>;
-    adminSetWeeklyResetTime(password: string, timestampNs: bigint): Promise<void>;
-    adminSetTournamentStart(password: string, timestampNs: bigint): Promise<void>;
-    adminInsertScore(password: string, nickname: string, score: bigint): Promise<void>;
+    submitScore(score: bigint): Promise<void>;
 }

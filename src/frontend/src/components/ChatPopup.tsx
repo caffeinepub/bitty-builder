@@ -3,9 +3,9 @@ import { Input } from "@/components/ui/input";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { ChatMessage } from "../backend";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import type { ChatMessage } from "../types/duel";
 
 interface Props {
   onClose: () => void;
@@ -20,7 +20,7 @@ export default function ChatPopup({ onClose }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [adminPasswordTarget, setAdminPasswordTarget] = useState<bigint | null>(
+  const [adminPasswordTarget, setAdminPasswordTarget] = useState<string | null>(
     null,
   );
   const [adminPassword, setAdminPassword] = useState("");
@@ -64,10 +64,10 @@ export default function ChatPopup({ onClose }: Props) {
     }
   };
 
-  const handleDeleteOwn = async (id: bigint) => {
+  const handleDeleteOwn = async (id: string) => {
     if (!actor) return;
     try {
-      await actor.deleteOwnChatMessage(id);
+      await actor.deleteChatMessage(id);
       await fetchMessages();
     } catch (_e) {
       toast.error("Could not delete message");
@@ -162,10 +162,10 @@ export default function ChatPopup({ onClose }: Props) {
           )}
           {messages.map((msg) => {
             const isOwn =
-              principal && msg.author.toText() === principal.toText();
+              principal && msg.sender.toText() === principal.toText();
             return (
               <motion.div
-                key={String(msg.id)}
+                key={msg.id}
                 initial={{ opacity: 0, x: isOwn ? 10 : -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 className={`flex flex-col gap-0.5 ${

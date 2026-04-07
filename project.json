@@ -1,0 +1,28 @@
+{
+  "overview": "Bitty Builder is a mobile-first Tetris game themed around the Bitty on ICP mascot with Internet Identity login, weekly/all-time leaderboards, $BITTYICP wallet integration, a real-money DUELS feature, and an animated tournament announcement system.",
+  "features": [
+    "Classic Tetris with gesture-only mobile controls",
+    "Internet Identity login with unique nicknames",
+    "Weekly and all-time leaderboards (top 200)",
+    "DUELS: wager $BITTYICP against other players with escrow and automatic payouts",
+    "Built-in $ICP and $BITTYICP wallet (view, send, receive)",
+    "Animated tournament plane banner with prize details",
+    "Real-time player chat",
+    "Admin panel for leaderboard and tournament management",
+    "Social score sharing to X with tracking",
+    "Synthesized electronic music (6 tracks)"
+  ],
+  "category": "games",
+  "tags": [
+    "tetris",
+    "web3",
+    "icp",
+    "gaming",
+    "leaderboard",
+    "duels",
+    "wallet",
+    "tournament",
+    "bittyicp"
+  ],
+  "last_updated": "2026-04-07T21:51:57.405Z"
+}

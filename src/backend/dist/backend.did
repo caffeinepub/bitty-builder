@@ -1,0 +1,88 @@
+type ScoreEntry = 
+ record {
+   nickname: text;
+   "principal": principal;
+   score: nat;
+   timestamp: int;
+ };
+type LeaderboardEntry = 
+ record {
+   nickname: text;
+   "principal": principal;
+   rank: nat;
+   score: nat;
+   shareCount: nat;
+   timestamp: int;
+ };
+type DuelState = 
+ variant {
+   challenger_played;
+   expired;
+   matched;
+   open;
+   opponent_played;
+   resolved;
+ };
+type DuelResult = 
+ record {
+   amount: nat;
+   challenger: principal;
+   challengerNickname: text;
+   challengerScore: opt nat;
+   createdAt: int;
+   expiresAt: int;
+   id: text;
+   matchedAt: opt int;
+   opponent: opt principal;
+   opponentNickname: opt text;
+   opponentScore: opt nat;
+   state: DuelState;
+   winnerId: opt principal;
+ };
+type ChatMessage = 
+ record {
+   author: principal;
+   id: nat;
+   nickname: text;
+   "text": text;
+   timestamp: int;
+ };
+service : {
+  acceptDuelChallenge: (duelId: text) -> (variant {
+                                            err: text;
+                                            ok: text;
+                                          });
+  adminDeleteChatMessage: (id: nat, password: text) -> ();
+  adminInsertScore: (password: text, nickname: text, score: nat) -> ();
+  adminResetWeeklyLeaderboard: (password: text) -> ();
+  adminSetTournamentStart: (password: text, newTimestampNs: int) -> ();
+  adminSetWeeklyResetTime: (password: text, newTimestampNs: int) -> ();
+  changeNickname: (newNickname: text) -> ();
+  deleteOwnChatMessage: (id: nat) -> ();
+  expireOldDuels: () -> ();
+  getAllScores: () -> (vec ScoreEntry) query;
+  getAllTimeLeaderboard: () -> (vec LeaderboardEntry) query;
+  getBittyBalance: (owner: principal) -> (nat);
+  getChatMessages: () -> (vec ChatMessage) query;
+  getDuelHistory: () -> (vec DuelResult) query;
+  getIcpBalance: (owner: principal) -> (nat);
+  getMyDuels: () -> (vec DuelResult) query;
+  getMyNickname: () -> (opt text) query;
+  getOpenDuels: () -> (vec DuelResult) query;
+  getTopScores: () -> (vec ScoreEntry) query;
+  getTopScoresForUser: (user: principal) -> (vec ScoreEntry) query;
+  getWeeklyLeaderboard: () -> (vec LeaderboardEntry) query;
+  isNicknameAvailable: (nickname: text) -> (bool) query;
+  playDuel: (duelId: text, score: nat) -> (variant {
+                                             err: text;
+                                             ok: text;
+                                           });
+  postDuelChallenge: (amount: nat) -> (variant {
+                                         err: text;
+                                         ok: text;
+                                       });
+  recordShare: () -> ();
+  registerNickname: (nickname: text) -> ();
+  sendChatMessage: ("text": text) -> ();
+  submitScore: (score: nat) -> ();
+}

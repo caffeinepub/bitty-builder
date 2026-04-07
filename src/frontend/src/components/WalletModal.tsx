@@ -2,6 +2,7 @@ import { Principal } from "@icp-sdk/core/principal";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   BITTYICP_CANISTER_ID,
@@ -20,6 +21,7 @@ type SendToken = "ICP" | "BITTYICP";
 
 export default function WalletModal({ onClose }: Props) {
   const { identity } = useInternetIdentity();
+  const { actor, isFetching: actorFetching } = useActor();
   const principal = identity?.getPrincipal();
   const principalText = principal?.toText() ?? "";
   const accountId = principal ? principalToAccountId(principal) : "";
@@ -27,6 +29,7 @@ export default function WalletModal({ onClose }: Props) {
   const [icpBalance, setIcpBalance] = useState<bigint | null>(null);
   const [bittyBalance, setBittyBalance] = useState<bigint | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState(false);
 
   const [sendToken, setSendToken] = useState<SendToken>("ICP");
   const [recipient, setRecipient] = useState("");
@@ -38,29 +41,27 @@ export default function WalletModal({ onClose }: Props) {
   const [copiedAccount, setCopiedAccount] = useState(false);
 
   const fetchBalances = useCallback(async () => {
-    if (!principal) return;
+    if (!principal || !actor || actorFetching) return;
     setBalanceLoading(true);
+    setBalanceError(false);
     try {
-      const [icpActor, bittyActor] = [
-        createIcrc1Actor(ICP_LEDGER_CANISTER_ID),
-        createIcrc1Actor(BITTYICP_CANISTER_ID),
-      ];
       const [icp, bitty] = await Promise.all([
-        icpActor.icrc1_balance_of({ owner: principal, subaccount: [] }),
-        bittyActor.icrc1_balance_of({ owner: principal, subaccount: [] }),
+        actor.getIcpBalance(principal),
+        actor.getBittyBalance(principal),
       ]);
       setIcpBalance(icp);
       setBittyBalance(bitty);
     } catch (_e) {
+      setBalanceError(true);
       toast.error("Failed to load balances");
     } finally {
       setBalanceLoading(false);
     }
-  }, [principal]);
+  }, [principal, actor, actorFetching]);
 
   useEffect(() => {
-    if (principal) fetchBalances();
-  }, [principal, fetchBalances]);
+    if (principal && actor && !actorFetching) fetchBalances();
+  }, [principal, actor, actorFetching, fetchBalances]);
 
   const handleCopy = (text: string, setter: (v: boolean) => void) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -88,8 +89,8 @@ export default function WalletModal({ onClose }: Props) {
     try {
       const canisterId =
         sendToken === "ICP" ? ICP_LEDGER_CANISTER_ID : BITTYICP_CANISTER_ID;
-      const actor = createIcrc1Actor(canisterId, identity);
-      const result = await actor.icrc1_transfer({
+      const sendActor = createIcrc1Actor(canisterId, identity);
+      const result = await sendActor.icrc1_transfer({
         to: { owner: recipientPrincipal, subaccount: [] },
         amount: rawAmount,
         fee: [],
@@ -226,12 +227,16 @@ export default function WalletModal({ onClose }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <BalanceCard
                 symbol="$ICP"
-                value={balanceLoading ? null : icpBalance}
+                value={icpBalance}
+                loading={balanceLoading}
+                error={balanceError}
                 color="#00DDFF"
               />
               <BalanceCard
                 symbol="$BITTYICP"
-                value={balanceLoading ? null : bittyBalance}
+                value={bittyBalance}
+                loading={balanceLoading}
+                error={balanceError}
                 color="#AAFF00"
               />
             </div>
@@ -401,10 +406,14 @@ function InfoBox({
 function BalanceCard({
   symbol,
   value,
+  loading,
+  error,
   color,
 }: {
   symbol: string;
   value: bigint | null;
+  loading: boolean;
+  error: boolean;
   color: string;
 }) {
   return (
@@ -422,7 +431,7 @@ function BalanceCard({
       >
         {symbol}
       </p>
-      {value === null ? (
+      {loading ? (
         <div
           className="h-6 rounded-sm mx-auto"
           style={{
@@ -431,6 +440,13 @@ function BalanceCard({
             animation: "pulse 1.5s ease-in-out infinite",
           }}
         />
+      ) : error || value === null ? (
+        <p
+          className="font-mono text-base font-black"
+          style={{ color: "rgba(255,255,255,0.3)" }}
+        >
+          —
+        </p>
       ) : (
         <p
           className="font-mono text-base font-black"

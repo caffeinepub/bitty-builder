@@ -2,13 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCheckNickname,
   useMyNickname,
+  usePlayDuel,
   useRegisterNickname,
   useSubmitScore,
 } from "../hooks/useQueries";
@@ -18,6 +19,8 @@ interface Props {
   onPlayAgain: () => void;
   onLeaderboard: () => void;
   onQuit: () => void;
+  duelId?: string | null;
+  onDuelComplete?: (score: number) => void;
 }
 
 export default function GameOverModal({
@@ -25,27 +28,62 @@ export default function GameOverModal({
   onPlayAgain,
   onLeaderboard,
   onQuit,
+  duelId = null,
+  onDuelComplete,
 }: Props) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
   const { isFetching: actorFetching, actor } = useActor();
   const isAuthenticated = !!identity;
+  const isDuelMode = !!duelId;
 
   const { data: existingNickname, isLoading: nicknameLoading } =
     useMyNickname();
   const [nickname, setNickname] = useState("");
   const [scoreSaved, setScoreSaved] = useState(false);
+  const [duelSubmitted, setDuelSubmitted] = useState(false);
+  const [duelError, setDuelError] = useState("");
 
   const { data: nicknameAvailable, isFetching: checkingNickname } =
     useCheckNickname(nickname.trim().length >= 2 ? nickname : "");
 
   const registerMutation = useRegisterNickname();
   const submitMutation = useSubmitScore();
+  const playDuelMutation = usePlayDuel();
 
   useEffect(() => {
     if (existingNickname) {
       setNickname(existingNickname);
     }
   }, [existingNickname]);
+
+  const duelSubmittedRef = useRef(false);
+
+  // In duel mode, auto-submit when actor is ready (runs once per mount)
+  useEffect(() => {
+    if (
+      !isDuelMode ||
+      !duelId ||
+      duelSubmittedRef.current ||
+      !actor ||
+      actorFetching
+    )
+      return;
+    duelSubmittedRef.current = true;
+
+    playDuelMutation
+      .mutateAsync({ duelId, score })
+      .then(() => {
+        setDuelSubmitted(true);
+        toast.success("Duel score submitted!");
+      })
+      .catch((e: unknown) => {
+        duelSubmittedRef.current = false;
+        setDuelError(
+          e instanceof Error ? e.message : "Failed to submit duel score",
+        );
+        toast.error("Failed to submit duel score");
+      });
+  }, [isDuelMode, duelId, actor, actorFetching, playDuelMutation, score]);
 
   const handleSaveScore = async () => {
     if (!existingNickname) {
@@ -89,13 +127,12 @@ export default function GameOverModal({
   const nickStatus = getNicknameStatus();
 
   const handleShareOnX = async () => {
-    // Auto-submit score first if authenticated and has nickname
     if (isAuthenticated && existingNickname && actor) {
       try {
         await submitMutation.mutateAsync(score);
         if (!scoreSaved) setScoreSaved(true);
       } catch (_e) {
-        // Score submission failed (e.g. not a new high score), that's ok
+        // Score submission failed — not a new high score, that's ok
       }
       try {
         await actor.recordShare();
@@ -107,6 +144,139 @@ export default function GameOverModal({
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
+
+  // Duel mode UI
+  if (isDuelMode) {
+    return (
+      <AnimatePresence>
+        <motion.div
+          key="gameover-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.85)" }}
+        >
+          <motion.div
+            key="gameover-panel"
+            initial={{ scale: 0.85, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.85, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="w-full max-w-sm rounded-sm p-6 flex flex-col gap-4"
+            data-ocid="score.modal"
+            style={{
+              background: "#0d0d1a",
+              outline: "2px solid rgba(255,107,0,0.4)",
+              boxShadow:
+                "0 0 40px rgba(255,107,0,0.3), 0 0 80px rgba(170,255,0,0.1)",
+            }}
+          >
+            <div className="text-center">
+              <h2
+                className="font-display font-black text-3xl"
+                style={{
+                  background: "linear-gradient(135deg, #FF6B00, #FF00AA)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                ⚔️ DUEL PLAYED
+              </h2>
+              <div className="mt-2">
+                <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
+                  Your Score
+                </span>
+                <div
+                  className="font-mono font-bold text-4xl leading-none mt-1"
+                  style={{ color: "#AAFF00" }}
+                >
+                  {score.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {playDuelMutation.isPending && (
+              <div className="flex flex-col items-center gap-2 py-2">
+                <Loader2
+                  className="h-6 w-6 animate-spin"
+                  style={{ color: "#FF6B00" }}
+                />
+                <p className="font-mono text-xs" style={{ color: "#FF6B00" }}>
+                  Submitting duel score...
+                </p>
+              </div>
+            )}
+
+            {duelSubmitted && (
+              <div
+                className="rounded-sm p-3 text-center"
+                style={{
+                  background: "rgba(170,255,0,0.1)",
+                  border: "1px solid rgba(170,255,0,0.3)",
+                }}
+              >
+                <p
+                  className="font-mono text-sm font-bold"
+                  style={{ color: "#AAFF00" }}
+                >
+                  ✓ Score submitted!
+                </p>
+                <p
+                  className="font-mono text-xs mt-1"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  Waiting for your opponent to play. Check DUELS for results.
+                </p>
+              </div>
+            )}
+
+            {duelError && (
+              <div
+                className="rounded-sm p-3 text-center"
+                style={{
+                  background: "rgba(255,0,80,0.1)",
+                  border: "1px solid rgba(255,0,80,0.3)",
+                }}
+              >
+                <p className="font-mono text-xs" style={{ color: "#FF0050" }}>
+                  ✗ {duelError}
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => onDuelComplete?.(score)}
+                data-ocid="duel.back_button"
+                className="btn-arcade w-full py-3 font-display font-black text-sm rounded-sm"
+                style={{
+                  background: "linear-gradient(135deg, #FF6B00, #FF00AA)",
+                  color: "#fff",
+                }}
+              >
+                ⚔️ BACK TO DUELS
+              </button>
+              <button
+                type="button"
+                onClick={onQuit}
+                className="btn-arcade w-full py-2 font-display font-black text-xs rounded-sm"
+                style={{
+                  border: "2px solid rgba(255,255,255,0.15)",
+                  color: "#666",
+                  background: "transparent",
+                }}
+              >
+                ✕ MAIN MENU
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>
@@ -329,7 +499,6 @@ export default function GameOverModal({
               ▶ PLAY AGAIN
             </button>
 
-            {/* Share on X */}
             <button
               type="button"
               onClick={handleShareOnX}

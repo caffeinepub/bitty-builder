@@ -10,6 +10,8 @@ interface Props {
   onLeaderboard: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  duelId?: string | null;
+  onDuelComplete?: (score: number) => void;
 }
 
 const CELL_SIZE_DESKTOP = 28;
@@ -24,6 +26,8 @@ export default function GameScreen({
   onLeaderboard,
   isMuted,
   onToggleMute,
+  duelId = null,
+  onDuelComplete,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -481,6 +485,8 @@ export default function GameScreen({
           onPlayAgain={handlePlayAgain}
           onLeaderboard={onLeaderboard}
           onQuit={handleQuit}
+          duelId={duelId}
+          onDuelComplete={onDuelComplete}
         />
       )}
     </div>

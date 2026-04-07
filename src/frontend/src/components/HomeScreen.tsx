@@ -17,356 +17,15 @@ import WalletModal from "./WalletModal";
 interface Props {
   onPlay: () => void;
   onLeaderboard: () => void;
+  onDuels: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
-}
-
-function TournamentBanner() {
-  const [showModal, setShowModal] = useState(false);
-
-  return (
-    <>
-      <style>{`
-        @keyframes flyPlane {
-          0%   { transform: translateX(-320px); }
-          100% { transform: translateX(calc(100vw + 40px)); }
-        }
-        @keyframes flickerColors {
-          0%   { color: #00DDFF; text-shadow: 0 0 8px #00DDFF, 0 0 20px #00DDFF; }
-          20%  { color: #FF00AA; text-shadow: 0 0 8px #FF00AA, 0 0 20px #FF00AA; }
-          40%  { color: #AAFF00; text-shadow: 0 0 8px #AAFF00, 0 0 20px #AAFF00; }
-          60%  { color: #FFD700; text-shadow: 0 0 8px #FFD700, 0 0 20px #FFD700; }
-          80%  { color: #CC55FF; text-shadow: 0 0 8px #CC55FF, 0 0 20px #CC55FF; }
-          100% { color: #00DDFF; text-shadow: 0 0 8px #00DDFF, 0 0 20px #00DDFF; }
-        }
-        .plane-fly {
-          animation: flyPlane 11s linear infinite;
-          position: absolute;
-          top: 50%;
-          left: 0;
-          transform: translateY(-50%);
-          display: flex;
-          align-items: center;
-          cursor: pointer;
-        }
-        .banner-flicker {
-          animation: flickerColors 1.4s linear infinite;
-          font-family: 'Courier New', monospace;
-          font-weight: 900;
-          font-size: 11px;
-          letter-spacing: 0.07em;
-          white-space: nowrap;
-        }
-      `}</style>
-
-      {/* Sky strip that holds the plane */}
-      <div
-        data-ocid="tournament.banner"
-        className="w-full relative overflow-hidden"
-        style={{ height: 64 }}
-      >
-        <button
-          type="button"
-          className="plane-fly"
-          onClick={() => setShowModal(true)}
-          aria-label="View tournament details"
-          style={{ background: "transparent", border: "none", padding: 0 }}
-        >
-          {/* Pixel plane body */}
-          <div
-            style={{
-              fontSize: 34,
-              lineHeight: 1,
-              filter:
-                "drop-shadow(0 0 8px #00DDFF) drop-shadow(0 0 14px #FF00AA)",
-              userSelect: "none",
-            }}
-          >
-            ✈️
-          </div>
-
-          {/* Tow rope */}
-          <div
-            style={{
-              width: 24,
-              height: 2,
-              background: "linear-gradient(90deg, #FFD700, #FF00AA)",
-              borderRadius: 2,
-              boxShadow: "0 0 6px #FFD700",
-              flexShrink: 0,
-            }}
-          />
-
-          {/* Banner sign */}
-          <div
-            style={{
-              padding: "5px 12px",
-              background: "rgba(4,4,18,0.92)",
-              border: "2px solid #00DDFF",
-              borderRadius: 4,
-              boxShadow:
-                "0 0 16px rgba(0,221,255,0.5), 0 0 32px rgba(255,0,170,0.25), inset 0 0 20px rgba(0,0,0,0.5)",
-            }}
-          >
-            <span className="banner-flicker">
-              🏆 TOURNAMENT LIVE! (CLICK FOR DETAILS) 🏆
-            </span>
-          </div>
-        </button>
-      </div>
-
-      {/* Tournament Details Modal */}
-      {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.90)",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              background: "#06060f",
-              border: "2px solid #00DDFF",
-              borderRadius: 10,
-              padding: "24px 20px",
-              maxWidth: 380,
-              width: "100%",
-              maxHeight: "85vh",
-              overflowY: "auto",
-              boxShadow:
-                "0 0 40px rgba(0,221,255,0.35), 0 0 80px rgba(255,0,170,0.2)",
-            }}
-          >
-            {/* Header */}
-            <div style={{ textAlign: "center", marginBottom: 18 }}>
-              <div
-                style={{
-                  fontSize: 20,
-                  fontWeight: 900,
-                  fontFamily: "Courier New, monospace",
-                  background:
-                    "linear-gradient(90deg,#00DDFF,#FF00AA,#AAFF00,#FFD700)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}
-              >
-                🏆 GAME TOURNAMENT 🏆
-              </div>
-            </div>
-
-            {/* Dates */}
-            {[
-              { label: "START", value: "Mar 28 — 9:00 PM UTC" },
-              { label: "END", value: "Apr 3  — 9:00 PM UTC" },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
-                }}
-              >
-                <span
-                  style={{
-                    color: "#AAFF00",
-                    fontWeight: 900,
-                    fontFamily: "Courier New, monospace",
-                    fontSize: 12,
-                  }}
-                >
-                  {label}
-                </span>
-                <span
-                  style={{
-                    color: "#fff",
-                    fontFamily: "Courier New, monospace",
-                    fontSize: 12,
-                  }}
-                >
-                  {value}
-                </span>
-              </div>
-            ))}
-
-            <div
-              style={{
-                borderTop: "1px solid rgba(255,255,255,0.12)",
-                margin: "14px 0",
-              }}
-            />
-
-            {/* Rules */}
-            <div
-              style={{
-                color: "#00DDFF",
-                fontWeight: 900,
-                fontFamily: "Courier New, monospace",
-                fontSize: 12,
-                marginBottom: 8,
-                letterSpacing: "0.08em",
-              }}
-            >
-              RULES
-            </div>
-            {[
-              'Play "BITTY BUILDER" and place high scores',
-              "TOP 10 Weekly scores win",
-              "Screenshot taken before leaderboard resets",
-            ].map((r) => (
-              <div
-                key={r}
-                style={{
-                  color: "#ccc",
-                  fontFamily: "Courier New, monospace",
-                  fontSize: 11,
-                  marginBottom: 5,
-                }}
-              >
-                • {r}
-              </div>
-            ))}
-
-            <div
-              style={{
-                borderTop: "1px solid rgba(255,255,255,0.12)",
-                margin: "14px 0",
-              }}
-            />
-
-            {/* Winnings */}
-            <div
-              style={{
-                color: "#FFD700",
-                fontWeight: 900,
-                fontFamily: "Courier New, monospace",
-                fontSize: 14,
-                textAlign: "center",
-                marginBottom: 12,
-                letterSpacing: "0.06em",
-              }}
-            >
-              🏆 WINNINGS 🏆
-            </div>
-            {[
-              {
-                place: "1st",
-                prize: "20 $ICP + 1M $BITTYICP",
-                color: "#FFD700",
-              },
-              {
-                place: "2nd",
-                prize: "15 $ICP + 1M $BITTYICP",
-                color: "#C0C0C0",
-              },
-              {
-                place: "3rd",
-                prize: "10 $ICP + 1M $BITTYICP",
-                color: "#CD7F32",
-              },
-              {
-                place: "4th",
-                prize: "5 $ICP + 1M $BITTYICP",
-                color: "#AAFF00",
-              },
-              { place: "5th", prize: "1M $BITTYICP", color: "#00DDFF" },
-              { place: "6–10th", prize: "500k $BITTYICP", color: "#FF00AA" },
-            ].map(({ place, prize, color }) => (
-              <div
-                key={place}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: 7,
-                  alignItems: "center",
-                }}
-              >
-                <span
-                  style={{
-                    color,
-                    fontWeight: 900,
-                    fontFamily: "Courier New, monospace",
-                    fontSize: 13,
-                    minWidth: 54,
-                  }}
-                >
-                  {place}
-                </span>
-                <span
-                  style={{
-                    color: "#fff",
-                    fontFamily: "Courier New, monospace",
-                    fontSize: 11,
-                    textAlign: "right",
-                  }}
-                >
-                  {prize}
-                </span>
-              </div>
-            ))}
-
-            <div
-              style={{
-                borderTop: "1px solid rgba(255,255,255,0.12)",
-                margin: "14px 0",
-              }}
-            />
-
-            {/* Bonus */}
-            <div
-              style={{
-                textAlign: "center",
-                color: "#FF00AA",
-                fontWeight: 900,
-                fontFamily: "Courier New, monospace",
-                fontSize: 13,
-                textShadow: "0 0 12px #FF00AA",
-                letterSpacing: "0.04em",
-              }}
-            >
-              🎁 BONUS REWARD!!! 2.5M $BITTYICP 🎁
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              style={{
-                marginTop: 22,
-                width: "100%",
-                padding: "11px 0",
-                background: "transparent",
-                border: "2px solid #FF00AA",
-                borderRadius: 6,
-                color: "#FF00AA",
-                fontWeight: 900,
-                fontFamily: "Courier New, monospace",
-                fontSize: 13,
-                cursor: "pointer",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-              }}
-            >
-              CLOSE
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
 }
 
 export default function HomeScreen({
   onPlay,
   onLeaderboard,
+  onDuels,
   isMuted,
   onToggleMute,
 }: Props) {
@@ -466,7 +125,6 @@ export default function HomeScreen({
 
         {/* Right side: mute + auth */}
         <div className="flex items-center gap-2">
-          {/* Music mute button */}
           <Button
             type="button"
             variant="outline"
@@ -480,7 +138,6 @@ export default function HomeScreen({
             {isMuted ? <VolumeX size={16} /> : <Music size={16} />}
           </Button>
 
-          {/* Auth button */}
           {isInitializing ? null : isAuthenticated ? (
             <Button
               type="button"
@@ -508,11 +165,6 @@ export default function HomeScreen({
             </Button>
           )}
         </div>
-      </div>
-
-      {/* Tournament Plane Banner */}
-      <div className="w-screen -mx-4 mt-3">
-        <TournamentBanner />
       </div>
 
       {/* Main content */}
@@ -545,9 +197,7 @@ export default function HomeScreen({
               src="/assets/uploads/IMG_5219-1.jpeg"
               alt="Bitty mascot"
               className="w-48 h-48 md:w-60 md:h-60 rounded-full object-cover block"
-              style={{
-                background: "#06060f",
-              }}
+              style={{ background: "#06060f" }}
             />
           </div>
         </motion.div>
@@ -627,6 +277,24 @@ export default function HomeScreen({
             🏆 LEADERBOARD
           </button>
 
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={onDuels}
+              data-ocid="duels.open_button"
+              className="btn-arcade w-full py-3 text-base font-display font-black rounded-sm transition-all"
+              style={{
+                background: "transparent",
+                border: "2px solid #FF6B00",
+                color: "#FF6B00",
+                boxShadow:
+                  "0 0 20px rgba(255,107,0,0.3), 0 4px 0 rgba(0,0,0,0.5)",
+              }}
+            >
+              ⚔️ DUELS (beta testing)
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowChat(true)}
@@ -691,86 +359,53 @@ export default function HomeScreen({
               </span>
             </div>
             <div className="px-4 py-3 flex flex-col gap-2.5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xl">👈👉</span>
-                <div className="flex-1">
+              {[
+                {
+                  icon: "👈👉",
+                  label: "Swipe Left / Right",
+                  desc: "Move piece",
+                  color: "#AAFF00",
+                },
+                {
+                  icon: "👇",
+                  label: "Swipe Down",
+                  desc: "Instant drop",
+                  color: "#00DDFF",
+                },
+                {
+                  icon: "👆",
+                  label: "Tap",
+                  desc: "Rotate piece",
+                  color: "#FF00AA",
+                },
+                {
+                  icon: "🔒",
+                  label: "Hold Button",
+                  desc: "Save piece",
+                  color: "#CC55FF",
+                },
+              ].map(({ icon, label, desc, color }) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <span className="text-xl">{icon}</span>
+                  <div className="flex-1">
+                    <span
+                      className="text-xs font-display font-black uppercase tracking-wide"
+                      style={{ color, textShadow: `0 0 8px ${color}80` }}
+                    >
+                      {label}
+                    </span>
+                  </div>
                   <span
-                    className="text-xs font-display font-black uppercase tracking-wide"
-                    style={{
-                      color: "#AAFF00",
-                      textShadow: "0 0 8px rgba(170,255,0,0.5)",
-                    }}
+                    className="text-xs font-mono"
+                    style={{ color: "rgba(255,255,255,0.55)" }}
                   >
-                    Swipe Left / Right
+                    {desc}
                   </span>
                 </div>
-                <span
-                  className="text-xs font-mono"
-                  style={{ color: "rgba(255,255,255,0.55)" }}
-                >
-                  Move piece
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xl">👇</span>
-                <div className="flex-1">
-                  <span
-                    className="text-xs font-display font-black uppercase tracking-wide"
-                    style={{
-                      color: "#00DDFF",
-                      textShadow: "0 0 8px rgba(0,221,255,0.5)",
-                    }}
-                  >
-                    Swipe Down
-                  </span>
-                </div>
-                <span
-                  className="text-xs font-mono"
-                  style={{ color: "rgba(255,255,255,0.55)" }}
-                >
-                  Instant drop
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xl">👆</span>
-                <div className="flex-1">
-                  <span
-                    className="text-xs font-display font-black uppercase tracking-wide"
-                    style={{
-                      color: "#FF00AA",
-                      textShadow: "0 0 8px rgba(255,0,170,0.5)",
-                    }}
-                  >
-                    Tap
-                  </span>
-                </div>
-                <span
-                  className="text-xs font-mono"
-                  style={{ color: "rgba(255,255,255,0.55)" }}
-                >
-                  Rotate piece
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xl">🔒</span>
-                <div className="flex-1">
-                  <span
-                    className="text-xs font-display font-black uppercase tracking-wide"
-                    style={{
-                      color: "#CC55FF",
-                      textShadow: "0 0 8px rgba(170,0,255,0.5)",
-                    }}
-                  >
-                    Hold Button
-                  </span>
-                </div>
-                <span
-                  className="text-xs font-mono"
-                  style={{ color: "rgba(255,255,255,0.55)" }}
-                >
-                  Save piece
-                </span>
-              </div>
+              ))}
             </div>
           </div>
         </motion.div>
@@ -937,7 +572,7 @@ export default function HomeScreen({
         </a>
       </footer>
 
-      {/* Chat popup */}
+      {/* Popups */}
       <AnimatePresence>
         {showChat && <ChatPopup onClose={() => setShowChat(false)} />}
         {showWallet && <WalletModal onClose={() => setShowWallet(false)} />}
